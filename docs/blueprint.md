@@ -136,13 +136,13 @@ Work on one step at a time. After each step, run its listed checks and review th
 
 ### Stage 2 — Establish HTTP behavior
 
-**Build:** Add environment configuration, a consistent not-found response, centralized error handling, and Zod-based request validation support. Keep the health endpoint working.
+**Build:** Add environment configuration, a consistent not-found response, centralized error handling, and Zod-based request validation support. Keep the health endpoint working. `PORT` is optional and defaults to `3000`; database and other integration-specific required settings will be introduced with their later stages.
 
 **Verify before continuing:**
 
-- Missing required configuration is reported clearly at startup.
+- Invalid configured values (for example, a nonnumeric or out-of-range `PORT`) are reported clearly at startup.
 - Unknown paths return the documented JSON error shape.
-- A deliberately invalid request to a temporary validation example returns a client error, not a server error.
+- A deliberately invalid request to the development-only validation example returns a client error, not a server error.
 - The app still compiles and starts.
 
 ### Stage 3 — Connect PostgreSQL and Prisma
