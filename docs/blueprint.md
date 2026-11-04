@@ -119,13 +119,144 @@ Reading-list entries reference catalog books and have a unique `(userId, bookId)
 - Map known validation, authentication, authorization, missing-resource, and Prisma constraint errors centrally. Do not return stack traces or secrets to clients.
 - Keep secrets in environment variables; validate required configuration during startup.
 
-## Suggested vertical implementation sequence
+## Step-by-step implementation and verification plan
 
-1. **Foundation:** package/tooling setup, environment validation, Express app/server split, health endpoint, centralized errors.
-2. **Persistence:** Prisma/PostgreSQL connection, initial schema, migrations, safe seed strategy.
-3. **Auth vertical:** register/login, bcrypt, JWT middleware, tests, and Postman requests.
-4. **Catalog vertical:** authors/categories/books CRUD, Zod validation, admin authorization, pagination, tests.
-5. **Reading-list vertical:** owner-scoped CRUD, cross-user access tests, Postman requests.
-6. **Documentation and hardening:** OpenAPI docs, completed Postman collection/environment, input/error review, full test run.
+Work on one step at a time. After each step, run its listed checks and review the result before starting the next. If a check fails, fix that step before proceeding. No later feature is assumed to exist early.
 
-At each vertical, implement and verify one end-to-end slice (schema → route → validation → service → persistence → tests → collection) before moving on.
+### Stage 1 — Create and run the smallest app
+
+**Build:** Initialize the Node.js/TypeScript project, add only the initial tooling and Express, and separate app creation from server startup.
+
+**Verify before continuing:**
+
+- Dependencies install successfully.
+- TypeScript compilation succeeds.
+- The server starts locally and can be stopped cleanly.
+- The app responds on a temporary health endpoint.
+
+### Stage 2 — Establish HTTP behavior
+
+**Build:** Add environment configuration, a consistent not-found response, centralized error handling, and Zod-based request validation support. Keep the health endpoint working.
+
+**Verify before continuing:**
+
+- Missing required configuration is reported clearly at startup.
+- Unknown paths return the documented JSON error shape.
+- A deliberately invalid request to a temporary validation example returns a client error, not a server error.
+- The app still compiles and starts.
+
+### Stage 3 — Connect PostgreSQL and Prisma
+
+**Build:** Add Prisma and the PostgreSQL connection configuration; define the initial User, Author, Category, Book, and ReadingListEntry models, relations, and constraints; create and apply the first migration.
+
+**Verify before continuing:**
+
+- Prisma schema validation succeeds.
+- The migration applies to a local PostgreSQL database.
+- Prisma can connect and perform a basic read/write check.
+- Unique and foreign-key constraints behave as designed.
+
+### Stage 4 — Register users
+
+**Build:** Implement registration with Zod input validation, normalized email handling, bcrypt password hashing, and a default non-admin role. Never accept role assignment from public registration.
+
+**Verify before continuing:**
+
+- Valid registration creates a user.
+- Invalid input is rejected with useful field details.
+- Duplicate email returns a conflict response.
+- Stored credentials are password hashes, never plaintext.
+- Add automated tests and the matching Postman request.
+
+### Stage 5 — Log in and authenticate requests
+
+**Build:** Implement login, JWT creation, and authentication middleware that validates bearer tokens and exposes the verified user identity to protected routes.
+
+**Verify before continuing:**
+
+- Correct credentials return a usable token.
+- Incorrect credentials return a generic authentication error.
+- Missing, malformed, expired, and invalid tokens cannot access a protected test route.
+- Add automated tests and Postman login/token handling.
+
+### Stage 6 — Add authorization and shared error mapping
+
+**Build:** Add role authorization for catalog administration and map expected Prisma errors (such as unique conflicts and missing records) into the shared API error format.
+
+**Verify before continuing:**
+
+- A regular user cannot use an admin-only test route.
+- An administrator can use it.
+- Internal stack traces and secrets are not returned to clients.
+- Expected database conflicts produce stable client-facing errors.
+
+### Stage 7 — Implement Authors
+
+**Build:** Add public author list/detail endpoints and administrator-only create/update/delete endpoints, with Zod validation and service-layer persistence.
+
+**Verify before continuing:**
+
+- Public reads work; unauthenticated and regular-user writes are denied.
+- Administrators can perform the full author CRUD lifecycle.
+- Invalid IDs, invalid payloads, and missing records return the expected errors.
+- Add endpoint tests and the author requests to Postman.
+
+### Stage 8 — Implement Categories
+
+**Build:** Add public category list/detail endpoints and administrator-only create/update/delete endpoints.
+
+**Verify before continuing:**
+
+- Public reads and administrator-only writes behave as documented.
+- Category uniqueness and validation constraints are enforced.
+- Missing records and database conflicts map to expected errors.
+- Add endpoint tests and the category requests to Postman.
+
+### Stage 9 — Implement Books
+
+**Build:** Add public book list/detail endpoints and administrator-only create/update/delete endpoints, including author/category relationships and bounded pagination/search.
+
+**Verify before continuing:**
+
+- Administrators can complete the book CRUD lifecycle.
+- Public list/detail responses include the intended related data.
+- Invalid or nonexistent author/category references are rejected clearly.
+- Search and pagination validate their inputs and have enforced limits.
+- Add endpoint tests and the book requests to Postman.
+
+### Stage 10 — Implement the private reading list
+
+**Build:** Add authenticated list/add/update/remove operations. Derive the owner exclusively from the verified token and scope every database operation to that owner.
+
+**Verify before continuing:**
+
+- A user can manage their own reading-list entries.
+- A second user cannot read, update, or delete the first user's entries.
+- Clients cannot select another owner by supplying a user ID.
+- Duplicate books in one user's list and nonexistent book references are handled consistently.
+- Add automated cross-user authorization tests and Postman requests.
+
+### Stage 11 — Complete API documentation and collection
+
+**Build:** Document the implemented routes, schemas, authentication, response/error formats, and example workflows. Complete the Postman collection and local environment without real credentials or secrets.
+
+**Verify before continuing:**
+
+- Every implemented route and access rule appears in the docs.
+- The collection can run the documented register → login → protected request workflow.
+- Request examples match actual validation and response shapes.
+
+### Stage 12 — Final end-to-end check
+
+**Build:** Address only issues uncovered by the full verification pass; do not add unverified features.
+
+**Verify completion:**
+
+- A clean install, type check, migrations, and automated test suite succeed.
+- The app starts against the configured PostgreSQL database.
+- The Postman workflow covers auth, catalog access, and owner-isolated reading lists.
+- No secrets are committed; documented setup requirements are complete.
+
+## Completion rule
+
+We move forward only after the current stage's verification passes and its behavior is reviewed. Each stage should leave the application runnable; each feature stage should include its automated tests and update the Postman collection before the next feature begins.
