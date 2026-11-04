@@ -12,7 +12,9 @@ app.use(express.json());
 app.get('/health', (_request, response) => {
   response.status(200).json({ status: 'ok' });
 });
-
+app.get("/",(_request,response)=>{
+  response.status(200).json({message:"Welcome to Bookstore API"})
+})
 if (process.env.NODE_ENV !== 'production') {
   app.post(
     '/_dev/validation',
