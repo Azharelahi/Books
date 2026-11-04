@@ -147,14 +147,15 @@ Work on one step at a time. After each step, run its listed checks and review th
 
 ### Stage 3 — Connect PostgreSQL and Prisma
 
-**Build:** Add Prisma and the PostgreSQL connection configuration; define the initial User, Author, Category, Book, and ReadingListEntry models, relations, and constraints; create and apply the first migration.
+**Build:** Add Prisma and the PostgreSQL connection configuration; define the initial User, Author, Category, Book, and ReadingListEntry models, relations, and constraints; create and apply the first migration. Copy `.env.example` to `.env` and set a local `DATABASE_URL`. Never commit `.env` or use production credentials for development checks. No account credentials or sample catalog data are seeded; the database verification script creates and removes uniquely named temporary records.
 
 **Verify before continuing:**
 
 - Prisma schema validation succeeds.
-- The migration applies to a local PostgreSQL database.
-- Prisma can connect and perform a basic read/write check.
+- Apply pending migrations with `npm run db:deploy` against the configured local database.
+- Run `npm run db:verify` to test Prisma connection, read/write, and constraints.
 - Unique and foreign-key constraints behave as designed.
+- The API starts only after establishing its database connection and disconnects Prisma on shutdown.
 
 ### Stage 4 — Register users
 

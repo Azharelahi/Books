@@ -1,0 +1,80 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum UserRole {
+  USER
+  ADMIN
+}
+
+enum ReadingStatus {
+  TO_READ
+  READING
+  COMPLETED
+}
+
+model User {
+  id           String             @id @default(uuid()) @db.Uuid
+  email        String             @unique @db.VarChar(320)
+  passwordHash String             @db.VarChar(255)
+  role         UserRole           @default(USER)
+  createdAt    DateTime           @default(now()) @db.Timestamptz(6)
+  updatedAt    DateTime           @updatedAt @db.Timestamptz(6)
+  readingList  ReadingListEntry[]
+}
+
+model Author {
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String   @db.VarChar(200)
+  biography String?
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @db.Timestamptz(6)
+  books     Book[]
+
+  @@index([name])
+}
+
+model Category {
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String   @unique @db.VarChar(100)
+  slug      String   @unique @db.VarChar(120)
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @db.Timestamptz(6)
+  books     Book[]
+}
+
+model Book {
+  id                 String             @id @default(uuid()) @db.Uuid
+  title              String             @db.VarChar(255)
+  isbn               String?            @unique @db.VarChar(17)
+  description        String?
+  publishedAt        DateTime?          @db.Date
+  createdAt          DateTime           @default(now()) @db.Timestamptz(6)
+  updatedAt          DateTime           @updatedAt @db.Timestamptz(6)
+  authors            Author[]
+  categories         Category[]
+  readingListEntries ReadingListEntry[]
+
+  @@index([title])
+}
+
+model ReadingListEntry {
+  id        String        @id @default(uuid()) @db.Uuid
+  userId    String        @db.Uuid
+  bookId    String        @db.Uuid
+  status    ReadingStatus @default(TO_READ)
+  notes     String?       @db.VarChar(2000)
+  createdAt DateTime      @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime      @updatedAt @db.Timestamptz(6)
+  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  book      Book          @relation(fields: [bookId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, bookId])
+  @@index([userId])
+  @@index([bookId])
+}
