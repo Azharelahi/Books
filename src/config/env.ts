@@ -10,6 +10,8 @@ const envSchema = z.object({
     .refine((value) => value.startsWith('postgresql://') || value.startsWith('postgres://'), {
       message: 'must be a PostgreSQL connection URL',
     }),
+  JWT_SECRET: z.string().min(32).default('i will use the key later, let me build the rest of tha app pahlay'),
+  JWT_EXPIRES_IN: z.string().default('1h'),
 });
 
 export type AppConfig = z.infer<typeof envSchema>;
