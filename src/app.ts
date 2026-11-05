@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import express from 'express';
 import { z } from 'zod';
+import authRoutes from './modules/auth/auth.routes.js';
 import { errorHandler } from './middleware/error-handler.js';
 import { notFound } from './middleware/not-found.js';
 import { validate } from './middleware/validate.js';
@@ -12,9 +13,12 @@ app.use(express.json());
 app.get('/health', (_request, response) => {
   response.status(200).json({ status: 'ok' });
 });
-app.get("/",(_request,response)=>{
-  response.status(200).json({message:"Welcome to Bookstore API"})
-})
+app.get('/', (_request, response) => {
+  response.status(200).json({ message: 'Welcome to Bookstore API' });
+});
+
+app.use('/api/v1/auth', authRoutes);
+
 if (process.env.NODE_ENV !== 'production') {
   app.post(
     '/_dev/validation',
