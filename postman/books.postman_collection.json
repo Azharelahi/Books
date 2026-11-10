@@ -1,0 +1,85 @@
+{
+  "info": {
+    "name": "Bookstore API - Books",
+    "description": "Public book catalog queries and administrator-only book management.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:3000" },
+    { "key": "adminToken", "value": "" },
+    { "key": "bookId", "value": "" },
+    { "key": "authorId", "value": "" },
+    { "key": "categoryId", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "List books",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/v1/books?search=fiction&page=1&limit=20"
+      }
+    },
+    {
+      "name": "Get book",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/v1/books/{{bookId}}"
+      }
+    },
+    {
+      "name": "Create book",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "if (pm.response.code === 201) {",
+              "  pm.collectionVariables.set('bookId', pm.response.json().book.id);",
+              "}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{adminToken}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"title\": \"Example Book\",\n  \"isbn\": \"9780306406157\",\n  \"description\": \"An example catalog entry.\",\n  \"publishedAt\": \"2024-01-15\",\n  \"authorIds\": [\"{{authorId}}\"],\n  \"categoryIds\": [\"{{categoryId}}\"]\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": "{{baseUrl}}/api/v1/books"
+      }
+    },
+    {
+      "name": "Update book",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{adminToken}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"title\": \"Updated Example Book\"\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": "{{baseUrl}}/api/v1/books/{{bookId}}"
+      }
+    },
+    {
+      "name": "Delete book",
+      "request": {
+        "method": "DELETE",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+        ],
+        "url": "{{baseUrl}}/api/v1/books/{{bookId}}"
+      }
+    }
+  ]
+}

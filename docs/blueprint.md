@@ -215,7 +215,7 @@ Work on one step at a time. After each step, run its listed checks and review th
 
 ### Stage 9 — Implement Books
 
-**Build:** Add public book list/detail endpoints and administrator-only create/update/delete endpoints, including author/category relationships and bounded pagination/search.
+**Build:** Add public book list/detail endpoints and administrator-only create/update/delete endpoints, including author/category relationships and bounded pagination/search. Book list queries support title search, author/category filters, `page` (default `1`), and `limit` (default `20`, maximum `100`). Book writes accept related IDs and reject nonexistent references.
 
 **Verify before continuing:**
 
