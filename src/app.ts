@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { UserRole } from './generated/prisma/enums.js';
 import authRoutes from './modules/auth/auth.routes.js';
 import authorsRoutes from './modules/authors/authors.routes.js';
+import categoriesRoutes from './modules/categories/categories.routes.js';
 import { authenticate } from './middleware/authenticate.js';
 import { authorize } from './middleware/authorize.js';
 import { errorHandler } from './middleware/error-handler.js';
@@ -23,6 +24,7 @@ app.get('/', (_request, response) => {
 
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/authors', authorsRoutes);
+app.use('/api/v1/categories', categoriesRoutes);
 
 if (process.env.NODE_ENV !== 'production') {
   app.get('/_dev/protected', authenticate, (request, response) => {

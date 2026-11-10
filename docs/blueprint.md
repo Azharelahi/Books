@@ -204,7 +204,7 @@ Work on one step at a time. After each step, run its listed checks and review th
 
 ### Stage 8 — Implement Categories
 
-**Build:** Add public category list/detail endpoints and administrator-only create/update/delete endpoints.
+**Build:** Add public category list/detail endpoints and administrator-only create/update/delete endpoints. Category writes require a unique name and slug; slugs are normalized to lowercase and must contain only letters, numbers, and single hyphens.
 
 **Verify before continuing:**
 

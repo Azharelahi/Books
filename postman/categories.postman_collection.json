@@ -1,0 +1,84 @@
+{
+  "info": {
+    "name": "Bookstore API - Categories",
+    "description": "Public category reads and administrator-only category management.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:3000" },
+    { "key": "adminToken", "value": "" },
+    { "key": "categoryId", "value": "" },
+    { "key": "categorySlug", "value": "fiction" }
+  ],
+  "item": [
+    {
+      "name": "List categories",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/v1/categories"
+      }
+    },
+    {
+      "name": "Get category",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/v1/categories/{{categoryId}}"
+      }
+    },
+    {
+      "name": "Create category",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "if (pm.response.code === 201) {",
+              "  pm.collectionVariables.set('categoryId', pm.response.json().category.id);",
+              "}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{adminToken}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Fiction\",\n  \"slug\": \"{{categorySlug}}\"\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": "{{baseUrl}}/api/v1/categories"
+      }
+    },
+    {
+      "name": "Update category",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{adminToken}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Literary Fiction\",\n  \"slug\": \"literary-fiction\"\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": "{{baseUrl}}/api/v1/categories/{{categoryId}}"
+      }
+    },
+    {
+      "name": "Delete category",
+      "request": {
+        "method": "DELETE",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+        ],
+        "url": "{{baseUrl}}/api/v1/categories/{{categoryId}}"
+      }
+    }
+  ]
+}
