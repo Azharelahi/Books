@@ -104,10 +104,10 @@ All routes are under `/api/v1`.
 | `POST` | `/categories` | Admin | Create a category |
 | `PATCH` | `/categories/:categoryId` | Admin | Update a category |
 | `DELETE` | `/categories/:categoryId` | Admin | Delete a category |
-| `GET` | `/me/reading-list` | Owner | List the caller's entries |
-| `POST` | `/me/reading-list` | Owner | Add a book to the caller's list |
-| `PATCH` | `/me/reading-list/:itemId` | Owner | Update status/notes for own entry |
-| `DELETE` | `/me/reading-list/:itemId` | Owner | Remove own entry |
+| `GET` | `/me/reading-list` | Authenticated | List the caller's entries |
+| `POST` | `/me/reading-list` | Authenticated | Add a book to the caller's list |
+| `PATCH` | `/me/reading-list/:itemId` | Authenticated | Update status/notes for own entry |
+| `DELETE` | `/me/reading-list/:itemId` | Authenticated | Remove own entry |
 
 Reading-list entries reference catalog books and have a unique `(userId, bookId)` pair. A user ID is taken from the verified token, not request payloads.
 
@@ -227,7 +227,7 @@ Work on one step at a time. After each step, run its listed checks and review th
 
 ### Stage 10 — Implement the private reading list
 
-**Build:** Add authenticated list/add/update/remove operations. Derive the owner exclusively from the verified token and scope every database operation to that owner.
+**Build:** Add authenticated list/add/update/remove operations. Derive the owner exclusively from the verified token and scope every database operation to that owner. A list item contains its book and related authors/categories; the owner ID is never accepted from request data.
 
 **Verify before continuing:**
 

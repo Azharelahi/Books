@@ -6,6 +6,7 @@ import authRoutes from './modules/auth/auth.routes.js';
 import authorsRoutes from './modules/authors/authors.routes.js';
 import booksRoutes from './modules/books/books.routes.js';
 import categoriesRoutes from './modules/categories/categories.routes.js';
+import readingListRoutes from './modules/reading-list/reading-list.routes.js';
 import { authenticate } from './middleware/authenticate.js';
 import { authorize } from './middleware/authorize.js';
 import { errorHandler } from './middleware/error-handler.js';
@@ -27,6 +28,7 @@ app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/authors', authorsRoutes);
 app.use('/api/v1/books', booksRoutes);
 app.use('/api/v1/categories', categoriesRoutes);
+app.use('/api/v1/me/reading-list', readingListRoutes);
 
 if (process.env.NODE_ENV !== 'production') {
   app.get('/_dev/protected', authenticate, (request, response) => {
