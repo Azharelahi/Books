@@ -1,15 +1,25 @@
 import { useEffect, useState } from 'react';
-import { Link, NavLink, Route, Routes, useParams, useSearchParams } from 'react-router-dom';
+import { Link, Navigate, NavLink, Route, Routes, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import {
+  addReadingListItem,
+  ApiError,
+  deleteReadingListItem,
   getAuthor,
   getAuthors,
   getBook,
   getBooks,
   getCategories,
   getCategory,
+  getReadingList,
+  login,
+  register,
+  updateReadingListItem,
   type Book,
   type Pagination,
+  type ReadingListEntry,
+  type ReadingStatus,
 } from './api';
+import { useAuth } from './auth';
 
 function useResource<T>(load: (signal: AbortSignal) => Promise<T>, dependencies: unknown[] = []) {
   const [data, setData] = useState<T | null>(null);
@@ -37,6 +47,7 @@ function useResource<T>(load: (signal: AbortSignal) => Promise<T>, dependencies:
 }
 
 function Header() {
+  const { user, signOut } = useAuth();
   const links = [
     { to: '/books', label: 'Books' },
     { to: '/authors', label: 'Authors' },
@@ -56,9 +67,20 @@ function Header() {
             </NavLink>
           ))}
         </nav>
-        <Link className="header-cta" to="/books">
-          Find a book <span aria-hidden="true">↗</span>
-        </Link>
+        <div className="header-account">
+          {user ? (
+            <>
+              <Link className="account-reading-link" to="/reading-list">My reading list</Link>
+              <span className="account-email">{user.email}</span>
+              <button className="sign-out-button" onClick={signOut}>Sign out</button>
+            </>
+          ) : (
+            <>
+              <Link className="account-reading-link" to="/login">Sign in</Link>
+              <Link className="header-cta" to="/register">Create account <span aria-hidden="true">↗</span></Link>
+            </>
+          )}
+        </div>
       </div>
     </header>
   );
@@ -321,6 +343,215 @@ function CatalogPage() {
   );
 }
 
+function RequireAuth({ children }: { children: React.ReactNode }) {
+  const { user, redirectState } = useAuth();
+  const location = useLocation();
+  if (!user) return <Navigate to="/login" replace state={redirectState ?? { from: location }} />;
+  return children;
+}
+
+function getReturnLocation(state: unknown): { path: string; state?: { readingNotes: Record<string, string> } } {
+  if (!state || typeof state !== 'object' || !('from' in state)) return { path: '/reading-list' };
+  const from = state.from;
+  if (!from || typeof from !== 'object' || !('pathname' in from) || typeof from.pathname !== 'string') {
+    return { path: '/reading-list' };
+  }
+  if (!from.pathname.startsWith('/') || from.pathname.startsWith('//')) return { path: '/reading-list' };
+  const search = 'search' in from && typeof from.search === 'string' ? from.search : '';
+  const hash = 'hash' in from && typeof from.hash === 'string' ? from.hash : '';
+  const routeState = 'readingNotes' in state &&
+    state.readingNotes &&
+    typeof state.readingNotes === 'object' &&
+    !Array.isArray(state.readingNotes)
+    ? { readingNotes: state.readingNotes as Record<string, string> }
+    : undefined;
+  return { path: `${from.pathname}${search}${hash}`, state: routeState };
+}
+
+function AuthPage({ mode }: { mode: 'login' | 'register' }) {
+  const isLogin = mode === 'login';
+  const { signIn } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const state = location.state as { email?: string; readingNotes?: Record<string, string> } | null;
+  const [email, setEmail] = useState(state?.email || '');
+  const [password, setPassword] = useState('');
+  const [fieldErrors, setFieldErrors] = useState<{ email?: string; password?: string }>({});
+  const [formError, setFormError] = useState('');
+  const [success, setSuccess] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+
+  function validate(): boolean {
+    const errors: { email?: string; password?: string } = {};
+    const normalizedEmail = email.trim();
+    if (!normalizedEmail || normalizedEmail.length > 320 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
+      errors.email = 'Enter a valid email address.';
+    }
+    if (password.length < 8) errors.password = 'Password must be at least 8 characters.';
+    else if (password.length > 128) errors.password = 'Password must be 128 characters or fewer.';
+    setFieldErrors(errors);
+    return Object.keys(errors).length === 0;
+  }
+
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setFormError('');
+    setSuccess('');
+    if (!validate()) return;
+
+    setSubmitting(true);
+    try {
+      if (isLogin) {
+        const session = await login(email.trim(), password);
+        signIn(session.token);
+        const destination = getReturnLocation(location.state);
+        navigate(destination.path, { replace: true, state: destination.state });
+      } else {
+        await register(email.trim(), password);
+        setPassword('');
+        setSuccess('Your account is ready. Sign in to start your reading list.');
+      }
+    } catch (cause) {
+      if (cause instanceof ApiError && cause.details.length) {
+        const errors: { email?: string; password?: string } = {};
+        for (const detail of cause.details) {
+          const field = detail.path?.split('.').pop();
+          if (field === 'email' || field === 'password') errors[field] = detail.message || 'Check this field.';
+        }
+        setFieldErrors(errors);
+        if (!Object.keys(errors).length) setFormError(cause.message);
+      } else {
+        setFormError(cause instanceof Error ? cause.message : 'Something went wrong. Please try again.');
+      }
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <div className="auth-page">
+      <div className="auth-art" aria-hidden="true">
+        <span className="auth-art-star">✳</span>
+        <p>Every good story<br />begins somewhere.</p>
+        <span className="auth-art-note">Perhaps here.</span>
+      </div>
+      <section className="auth-panel" aria-labelledby="auth-heading">
+        <span className="eyebrow">{isLogin ? 'Welcome back' : 'A place to begin'}</span>
+        <h1 id="auth-heading">{isLogin ? <>Good to<br /><em>see you.</em></> : <>Make room<br />for <em>stories.</em></>}</h1>
+        <p className="auth-intro">{isLogin ? 'Sign in to pick up where you left off.' : 'Create an account to keep your reading close.'}</p>
+        {success ? (
+          <div className="auth-success" role="status">
+            <span aria-hidden="true">✳</span>
+            <p>{success}</p>
+            <Link className="button button-dark" to="/login" state={{ email: email.trim() }}>Continue to sign in <span aria-hidden="true">↗</span></Link>
+          </div>
+        ) : (
+          <form className="auth-form" onSubmit={handleSubmit} noValidate>
+            {formError && <div className="form-alert" role="alert">{formError}</div>}
+            <div className="field-group">
+              <label htmlFor="account-email">Email address</label>
+              <input
+                autoComplete="email"
+                id="account-email"
+                type="email"
+                value={email}
+                maxLength={320}
+                aria-invalid={Boolean(fieldErrors.email)}
+                aria-describedby={fieldErrors.email ? 'account-email-error' : undefined}
+                onChange={(event) => {
+                  setEmail(event.target.value);
+                  setFieldErrors((current) => ({ ...current, email: undefined }));
+                }}
+              />
+              {fieldErrors.email && <span className="field-error" id="account-email-error">{fieldErrors.email}</span>}
+            </div>
+            <div className="field-group">
+              <label htmlFor="account-password">Password</label>
+              <input
+                autoComplete={isLogin ? 'current-password' : 'new-password'}
+                id="account-password"
+                type="password"
+                value={password}
+                maxLength={128}
+                aria-invalid={Boolean(fieldErrors.password)}
+                aria-describedby={fieldErrors.password ? 'account-password-error' : undefined}
+                onChange={(event) => {
+                  setPassword(event.target.value);
+                  setFieldErrors((current) => ({ ...current, password: undefined }));
+                }}
+              />
+              {fieldErrors.password && <span className="field-error" id="account-password-error">{fieldErrors.password}</span>}
+              <span className="field-hint">At least 8 characters.</span>
+            </div>
+            <button className="button button-dark auth-submit" type="submit" disabled={submitting}>
+              {submitting ? 'One moment…' : isLogin ? 'Sign in' : 'Create account'}
+              {!submitting && <span aria-hidden="true">↗</span>}
+            </button>
+          </form>
+        )}
+        {!success && (
+          <p className="auth-switch">
+            {isLogin ? 'New to Marginalia?' : 'Already have an account?'}{' '}
+            <Link to={isLogin ? '/register' : '/login'} state={isLogin ? location.state : { email: email.trim() }}>
+              {isLogin ? 'Create an account' : 'Sign in'}
+            </Link>
+          </p>
+        )}
+        <p className="auth-privacy">Your password is sent to the bookshop API and is never stored in this browser.</p>
+      </section>
+    </div>
+  );
+}
+
+function AddToReadingList({ bookId }: { bookId: string }) {
+  const { token, user, signOut } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [pending, setPending] = useState(false);
+  const [added, setAdded] = useState(false);
+  const [message, setMessage] = useState('');
+
+  async function addBook() {
+    if (!token) return;
+    setPending(true);
+    setMessage('');
+    try {
+      await addReadingListItem(token, bookId);
+      setAdded(true);
+    } catch (cause) {
+      if (cause instanceof ApiError && cause.status === 401) {
+        signOut();
+        navigate('/login', { replace: true, state: { from: location } });
+        return;
+      }
+      setMessage(cause instanceof Error ? cause.message : 'This book could not be added right now.');
+    } finally {
+      setPending(false);
+    }
+  }
+
+  if (!user) {
+    return <div className="save-book-prompt">
+      <Link className="button button-dark" to="/login" state={{ from: location }}>Sign in to save this book <span aria-hidden="true">↗</span></Link>
+      <span>Keep your next read close at hand.</span>
+    </div>;
+  }
+
+  return (
+    <div className="save-book-prompt">
+      {added ? (
+        <Link className="button button-dark" to="/reading-list">Added to your reading list <span aria-hidden="true">↗</span></Link>
+      ) : (
+        <button className="button button-dark" onClick={addBook} disabled={pending}>
+          {pending ? 'Adding…' : 'Add to my reading list'} {!pending && <span aria-hidden="true">↗</span>}
+        </button>
+      )}
+      {message && <p className="inline-error" role="alert">{message}</p>}
+      {!message && !added && <span>Keep your next read close at hand.</span>}
+    </div>
+  );
+}
+
 function BookDetailPage() {
   const { bookId = '' } = useParams();
   const result = useResource((signal) => getBook(bookId, signal), [bookId]);
@@ -349,6 +580,7 @@ function BookDetailPage() {
             {book.isbn && <div><dt>ISBN</dt><dd>{book.isbn}</dd></div>}
             {!!book.categories.length && <div><dt>On the shelf</dt><dd>{book.categories.map((category) => <Link key={category.id} to={`/categories/${category.id}`}>{category.name}</Link>)}</dd></div>}
           </dl>
+          <AddToReadingList bookId={book.id} />
           <div className="detail-aside"><span aria-hidden="true">✳</span> No hurry. Take your time finding the right story.</div>
         </div>
       </article>
@@ -506,6 +738,204 @@ function CategoryDetailPage() {
   );
 }
 
+function ReadingListPage() {
+  const { token, expireSession } = useAuth();
+  const location = useLocation();
+  const restoredNotes = (location.state as { readingNotes?: Record<string, string> } | null)?.readingNotes;
+  const [entries, setEntries] = useState<ReadingListEntry[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
+  const [actionError, setActionError] = useState('');
+  const [attempt, setAttempt] = useState(0);
+  const [filter, setFilter] = useState<'ALL' | ReadingStatus>('ALL');
+  const [busyId, setBusyId] = useState('');
+  const [confirmingId, setConfirmingId] = useState('');
+  const [notes, setNotes] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    if (!token) return;
+    const controller = new AbortController();
+    setLoading(true);
+    setLoadError('');
+    getReadingList(token, controller.signal)
+      .then((result) => {
+        setEntries(result);
+        const savedNotes = Object.fromEntries(result.map((entry) => [entry.id, entry.notes || '']));
+        for (const entry of result) {
+          const draft = restoredNotes?.[entry.id];
+          if (typeof draft === 'string') savedNotes[entry.id] = draft;
+        }
+        setNotes(savedNotes);
+      })
+      .catch((cause: unknown) => {
+        if (cause instanceof DOMException && cause.name === 'AbortError') return;
+        if (cause instanceof ApiError && cause.status === 401) {
+          expireSession({ from: location });
+          return;
+        }
+        setLoadError(cause instanceof Error ? cause.message : 'Your reading list could not be loaded.');
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setLoading(false);
+      });
+    return () => controller.abort();
+  }, [token, attempt]);
+
+  async function handleEntryAction(itemId: string, action: () => Promise<ReadingListEntry | void>) {
+    setBusyId(itemId);
+    setActionError('');
+    try {
+      const updated = await action();
+      if (updated) setEntries((current) => current.map((entry) => entry.id === itemId ? updated : entry));
+      return true;
+    } catch (cause) {
+      if (cause instanceof ApiError && cause.status === 401) {
+        expireSession({ from: location, readingNotes: notes });
+        return false;
+      }
+      setActionError(cause instanceof Error ? cause.message : 'That change could not be saved.');
+      return false;
+    } finally {
+      setBusyId('');
+    }
+  }
+
+  async function saveStatus(itemId: string, status: ReadingStatus) {
+    if (!token) return;
+    await handleEntryAction(itemId, () => updateReadingListItem(token, itemId, { status }));
+  }
+
+  async function saveNotes(itemId: string) {
+    if (!token) return;
+    const value = notes[itemId]?.trim() || null;
+    const saved = await handleEntryAction(itemId, () => updateReadingListItem(token, itemId, { notes: value }));
+    if (saved) setNotes((current) => ({ ...current, [itemId]: value || '' }));
+  }
+
+  async function removeEntry(itemId: string) {
+    if (!token) return;
+    const removed = await handleEntryAction(itemId, async () => {
+      await deleteReadingListItem(token, itemId);
+    });
+    if (removed) {
+      setEntries((current) => current.filter((entry) => entry.id !== itemId));
+      setNotes((current) => {
+        const next = { ...current };
+        delete next[itemId];
+        return next;
+      });
+      setConfirmingId('');
+    }
+  }
+
+  const visibleEntries = filter === 'ALL' ? entries : entries.filter((entry) => entry.status === filter);
+  const counts = {
+    ALL: entries.length,
+    TO_READ: entries.filter((entry) => entry.status === 'TO_READ').length,
+    READING: entries.filter((entry) => entry.status === 'READING').length,
+    COMPLETED: entries.filter((entry) => entry.status === 'COMPLETED').length,
+  };
+  const labels: Record<ReadingStatus, string> = {
+    TO_READ: 'Want to read',
+    READING: 'Reading now',
+    COMPLETED: 'Finished',
+  };
+
+  return (
+    <div className="page-wrap reading-list-page">
+      <div className="reading-list-heading">
+        <div>
+          <span className="eyebrow">Your own little corner</span>
+          <h1>Your reading<br /><em>life, lately.</em></h1>
+          <p>A place to keep the books you mean to read, the ones you’re in, and the ones you’ll remember.</p>
+        </div>
+        <span className="reading-list-mark" aria-hidden="true">✳</span>
+      </div>
+
+      {actionError && <div className="form-alert" role="alert">{actionError}</div>}
+      {loading ? <LoadingGrid /> : loadError ? (
+        <ErrorState message={loadError} retry={() => setAttempt((value) => value + 1)} />
+      ) : entries.length ? (
+        <>
+          <div className="reading-filters" aria-label="Filter reading list">
+            {(['ALL', 'TO_READ', 'READING', 'COMPLETED'] as const).map((status) => (
+              <button
+                className={filter === status ? 'reading-filter active' : 'reading-filter'}
+                key={status}
+                aria-pressed={filter === status}
+                onClick={() => setFilter(status)}
+              >
+                {status === 'ALL' ? 'Everything' : labels[status]} <span>{counts[status]}</span>
+              </button>
+            ))}
+          </div>
+          {visibleEntries.length ? (
+            <div className="reading-entry-list">
+              {visibleEntries.map((entry, index) => (
+                <article className="reading-entry" key={entry.id}>
+                  <Link className="reading-entry-cover" to={`/books/${entry.book.id}`}>
+                    <BookCover book={entry.book} index={index} />
+                  </Link>
+                  <div className="reading-entry-info">
+                    <span className="eyebrow">{entry.book.categories[0]?.name || 'On your list'}</span>
+                    <h2><Link to={`/books/${entry.book.id}`}>{entry.book.title}</Link></h2>
+                    <p className="reading-entry-author">{entry.book.authors.map((author) => author.name).join(', ') || 'Unknown author'}</p>
+                    <label className="reading-status-label" htmlFor={`status-${entry.id}`}>Where are you with it?</label>
+                    <select
+                      id={`status-${entry.id}`}
+                      value={entry.status}
+                      disabled={busyId === entry.id}
+                      onChange={(event) => void saveStatus(entry.id, event.target.value as ReadingStatus)}
+                    >
+                      {(Object.keys(labels) as ReadingStatus[]).map((status) => <option key={status} value={status}>{labels[status]}</option>)}
+                    </select>
+                    <label className="notes-label" htmlFor={`notes-${entry.id}`}>A note to yourself <span>Optional</span></label>
+                    <textarea
+                      id={`notes-${entry.id}`}
+                      value={notes[entry.id] ?? ''}
+                      maxLength={2000}
+                      rows={3}
+                      placeholder="A thought, a page to find again…"
+                      onChange={(event) => setNotes((current) => ({ ...current, [entry.id]: event.target.value }))}
+                    />
+                    <div className="entry-actions">
+                      <button className="text-button" disabled={busyId === entry.id} onClick={() => void saveNotes(entry.id)}>
+                        {busyId === entry.id ? 'Saving…' : 'Save note'}
+                      </button>
+                      {confirmingId === entry.id ? (
+                        <span className="remove-confirm">
+                          Remove this book?
+                          <button className="text-button" disabled={busyId === entry.id} onClick={() => void removeEntry(entry.id)}>Yes, remove</button>
+                          <button className="text-button" onClick={() => setConfirmingId('')}>Keep it</button>
+                        </span>
+                      ) : (
+                        <button className="remove-button" disabled={busyId === entry.id} onClick={() => setConfirmingId(entry.id)}>Remove</button>
+                      )}
+                    </div>
+                  </div>
+                </article>
+              ))}
+            </div>
+          ) : (
+            <div className="empty-state filter-empty">
+              <span aria-hidden="true">✳</span><h2>Nothing on this shelf just yet</h2>
+              <p>Move a book here by changing its reading status.</p>
+              <button className="text-button" onClick={() => setFilter('ALL')}>Show everything</button>
+            </div>
+          )}
+        </>
+      ) : (
+        <div className="empty-state reading-empty">
+          <span aria-hidden="true">✳</span>
+          <h2>A fresh page</h2>
+          <p>Your reading list is empty for now. Find a book that feels like the beginning of something.</p>
+          <Link className="button button-dark" to="/books">Explore the collection <span aria-hidden="true">↗</span></Link>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function NotFoundPage() {
   return (
     <div className="not-found">
@@ -522,6 +952,9 @@ export default function App() {
     <Layout>
       <Routes>
         <Route path="/" element={<HomePage />} />
+        <Route path="/login" element={<AuthPage mode="login" />} />
+        <Route path="/register" element={<AuthPage mode="register" />} />
+        <Route path="/reading-list" element={<RequireAuth><ReadingListPage /></RequireAuth>} />
         <Route path="/books" element={<CatalogPage />} />
         <Route path="/books/:bookId" element={<BookDetailPage />} />
         <Route path="/authors" element={<AuthorsPage />} />
