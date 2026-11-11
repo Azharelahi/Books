@@ -258,6 +258,67 @@ Work on one step at a time. After each step, run its listed checks and review th
 - The Postman workflow covers auth, catalog access, and owner-isolated reading lists.
 - No secrets are committed; documented setup requirements are complete.
 
+## Frontend implementation plan
+
+Build the customer storefront and administrator interface as a separate frontend application, leaving the Express API as the source of truth. Use React, TypeScript, and Vite with client-side routing; keep the API base URL configurable through a frontend environment variable. Organize the app into shared layout/components, route pages, and a small typed API client. The client must send the JWT as a bearer token for protected calls and handle the API's actual response and error shapes.
+
+The visual direction is an editorial, contemporary bookshop: expressive book-focused typography, generous whitespace, warm paper-like surfaces, restrained ink/forest accents, and clear cover-shaped tiles. The current API has no cover-image, price, rating, or inventory fields, so do not imply those values exist. Use intentional typographic/color cover placeholders until book artwork is supported by the API. Make loading, empty, validation, unauthorized, not-found, and server-error states part of the design, not afterthoughts.
+
+The browser routes below are UI routes, not new API endpoints. They collectively expose every customer- and administrator-facing endpoint in the route map. `/`, `/health`, and `/_dev/*` are API/server routes and are not storefront pages.
+
+### Frontend Stage 1 — Build the public storefront
+
+**Build:**
+
+- Create the frontend app, responsive design tokens, shared header/navigation/footer, buttons, form controls, book cards, and accessible loading/empty/error patterns.
+- Implement the home page with a welcoming editorial hero, curated sections based only on available catalog data, and clear paths into search and browsing.
+- Implement catalog browsing at `/books`, book details at `/books/:bookId`, author directory/details at `/authors` and `/authors/:authorId`, and category browsing/details at `/categories` and `/categories/:categoryId`.
+- Connect the catalog UI to public API reads. Support book search, author/category filters, and bounded pagination using the existing query parameters; provide usable empty and failed-request states.
+
+**API coverage:** `GET /api/v1/books`, `GET /api/v1/books/:bookId`, `GET /api/v1/authors`, `GET /api/v1/authors/:authorId`, `GET /api/v1/categories`, and `GET /api/v1/categories/:categoryId`.
+
+**Verify before continuing:**
+
+- Every public catalog page loads real API data and renders related authors/categories where provided.
+- Search, filters, pagination, and detail links preserve valid state and recover gracefully from invalid or missing records.
+- Layouts work on narrow and wide screens; keyboard navigation, visible focus, semantic headings, and form labels are in place.
+- The UI does not show unsupported catalog claims such as prices, ratings, stock, or real cover art.
+
+### Frontend Stage 2 — Add accounts and personal reading
+
+**Build:**
+
+- Add `/register` and `/login` forms with inline validation, submission feedback, and accessible error messaging. On successful login, retain the JWT according to the API's bearer-token contract and provide a clear sign-out action.
+- Add the protected `/reading-list` page. Let signed-in users add a book from its detail page, view their list, change status among `TO_READ`, `READING`, and `COMPLETED`, edit notes, and remove entries.
+- Keep authentication state and navigation consistent across refreshes/session changes as supported by the token contract. Handle expired/missing credentials and `401` responses without losing unsaved form input where practical. The API remains responsible for enforcing list ownership.
+
+**API coverage:** `POST /api/v1/auth/register`, `POST /api/v1/auth/login`, `GET /api/v1/me/reading-list`, `POST /api/v1/me/reading-list`, `PATCH /api/v1/me/reading-list/:itemId`, and `DELETE /api/v1/me/reading-list/:itemId`.
+
+**Verify before continuing:**
+
+- Registration and login display API validation/authentication errors clearly and never expose passwords or tokens in the UI.
+- Anonymous users are prompted to sign in for reading-list actions; protected routes return users to their intended destination after authentication.
+- Add, status/notes update, and removal actions refresh the UI correctly, including duplicate-book and network-error cases.
+- A user can only see and manage the entries returned for their own authenticated account.
+
+### Frontend Stage 3 — Complete administration and production polish
+
+**Build:**
+
+- Add role-aware administrator navigation and protected `/admin/books`, `/admin/authors`, and `/admin/categories` management pages, with `/new` and `/:id/edit` routes for create/edit forms and confirmed delete actions.
+- Support book create/edit fields for title, ISBN, description, publication date, authors, and categories; support author name/biography and category name/slug. Reuse shared form and feedback components while keeping field validation aligned with the API.
+- Finish responsive/accessibility polish across all routes, add a branded not-found page, and document frontend setup, API configuration, and the development workflow.
+- Keep authorization enforcement on the API. Hide admin controls from non-admin users for clarity, but treat the API's `403` response as authoritative. Do not invent a public admin-registration flow.
+
+**API coverage:** `POST /api/v1/books`, `PATCH` and `DELETE /api/v1/books/:bookId`; `POST /api/v1/authors`, `PATCH` and `DELETE /api/v1/authors/:authorId`; `POST /api/v1/categories`, `PATCH` and `DELETE /api/v1/categories/:categoryId`. All catalog writes require an administrator JWT.
+
+**Verify completion:**
+
+- Each create, update, and delete action is wired to its corresponding endpoint; successful changes are reflected in lists/details and failures remain visible and recoverable.
+- Regular users cannot access admin workflows, and unauthenticated/forbidden API responses are handled consistently.
+- Every customer and admin route has loading, empty, validation, failure, and not-found behavior appropriate to the page.
+- Run the frontend build, type-check, and available tests; manually exercise the complete public browsing, register/login, reading-list, and administrator CRUD workflows at desktop and mobile widths.
+
 ## Completion rule
 
 We move forward only after the current stage's verification passes and its behavior is reviewed. Each stage should leave the application runnable; each feature stage should include its automated tests and update the Postman collection before the next feature begins.
