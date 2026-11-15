@@ -12,9 +12,13 @@ Vite proxies `/api/v1` to `http://localhost:3000`. To use another API path, crea
 
 The storefront routes are `/`, `/books`, `/books/:bookId`, `/authors`, `/authors/:authorId`, `/categories`, `/categories/:categoryId`, `/register`, `/login`, and `/reading-list`. Book search, filters, and pagination are kept in the URL so views can be bookmarked and shared. The reading list is protected; after sign-in, users return to the page that prompted authentication.
 
+Administrators can manage catalog records at `/admin/books`, `/admin/authors`, and `/admin/categories`. Each section has create, edit, and confirmed delete workflows. Book forms link existing authors and categories. An administrator JWT is required by the API; the UI hides management navigation from regular accounts and the API remains authoritative for every write. There is no public administrator registration route. Admin pages currently list the first 100 books (the API's maximum page size) and all authors/categories.
+
 Authentication uses the API's bearer-token response and keeps the token in `sessionStorage` for the browser tab session. Sign out clears it. The API remains authoritative for authorization and ownership. Registration creates the account, then prompts the user to sign in.
 
 The account and reading-list screens use `POST /auth/register`, `POST /auth/login`, and the protected `/me/reading-list` GET/POST/PATCH/DELETE endpoints under `/api/v1`. Reading-list status and notes are updated through the API, not kept only in the browser.
+
+Catalog management uses `POST`, `PATCH`, and `DELETE` on `/books`, `/authors`, and `/categories` under `/api/v1`. Validation follows the API schemas; field-level server validation details and authorization errors are shown in the form feedback area.
 
 ## Build
 

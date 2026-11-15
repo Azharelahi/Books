@@ -196,3 +196,31 @@ export async function deleteReadingListItem(token: string, itemId: string): Prom
     method: 'DELETE',
   });
 }
+
+export async function saveBook(token: string, input: Record<string, unknown>, id?: string): Promise<Book> {
+  const result = await request<{ book: Book }>(id ? `/books/${encodeURIComponent(id)}` : '/books', {
+    token, method: id ? 'PATCH' : 'POST', body: input,
+  });
+  return result.book;
+}
+export async function deleteBook(token: string, id: string): Promise<void> {
+  await request<void>(`/books/${encodeURIComponent(id)}`, { token, method: 'DELETE' });
+}
+export async function saveAuthor(token: string, input: Record<string, unknown>, id?: string): Promise<Author> {
+  const result = await request<{ author: Author }>(id ? `/authors/${encodeURIComponent(id)}` : '/authors', {
+    token, method: id ? 'PATCH' : 'POST', body: input,
+  });
+  return result.author;
+}
+export async function deleteAuthor(token: string, id: string): Promise<void> {
+  await request<void>(`/authors/${encodeURIComponent(id)}`, { token, method: 'DELETE' });
+}
+export async function saveCategory(token: string, input: Record<string, unknown>, id?: string): Promise<Category> {
+  const result = await request<{ category: Category }>(id ? `/categories/${encodeURIComponent(id)}` : '/categories', {
+    token, method: id ? 'PATCH' : 'POST', body: input,
+  });
+  return result.category;
+}
+export async function deleteCategory(token: string, id: string): Promise<void> {
+  await request<void>(`/categories/${encodeURIComponent(id)}`, { token, method: 'DELETE' });
+}

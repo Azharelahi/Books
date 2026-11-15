@@ -11,10 +11,13 @@ import {
   getCategories,
   getCategory,
   getReadingList,
+  saveBook, deleteBook, saveAuthor, deleteAuthor, saveCategory, deleteCategory,
   login,
   register,
   updateReadingListItem,
   type Book,
+  type Author,
+  type Category,
   type Pagination,
   type ReadingListEntry,
   type ReadingStatus,
@@ -70,6 +73,7 @@ function Header() {
         <div className="header-account">
           {user ? (
             <>
+              {user.role === 'ADMIN' && <Link className="account-reading-link" to="/admin/books">Manage</Link>}
               <Link className="account-reading-link" to="/reading-list">My reading list</Link>
               <span className="account-email">{user.email}</span>
               <button className="sign-out-button" onClick={signOut}>Sign out</button>
@@ -947,6 +951,120 @@ function NotFoundPage() {
   );
 }
 
+type AdminKind = 'books' | 'authors' | 'categories';
+type AdminRecord = Book | Author | Category;
+function AdminGuard({ children }: { children: React.ReactNode }) {
+  const { user } = useAuth();
+  const location = useLocation();
+  if (!user) return <Navigate to="/login" replace state={{ from: location }} />;
+  if (user.role !== 'ADMIN') return <Navigate to="/" replace />;
+  return children;
+}
+
+function AdminPage({ kind }: { kind: AdminKind }) {
+  const { token } = useAuth();
+  const navigate = useNavigate();
+  const params = useParams();
+  const recordId = params.recordId;
+  const editing = Boolean(recordId);
+  const books = useResource((signal) => getBooks({ limit: 100 }, signal), [kind]);
+  const authors = useResource((signal) => getAuthors(signal), [kind]);
+  const categories = useResource((signal) => getCategories(signal), [kind]);
+  const [values, setValues] = useState<Record<string, string | string[]>>({});
+  const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [confirmId, setConfirmId] = useState('');
+  const records: AdminRecord[] = kind === 'books' ? books.data?.books ?? [] : kind === 'authors' ? authors.data ?? [] : categories.data ?? [];
+  const record = records.find((item) => item.id === recordId);
+
+  useEffect(() => {
+    if (kind === 'books') {
+      const item = record as Book | undefined;
+      setValues(item ? { title: item.title, isbn: item.isbn ?? '', description: item.description ?? '', publishedAt: item.publishedAt?.slice(0, 10) ?? '', authorIds: item.authors.map((a) => a.id), categoryIds: item.categories.map((c) => c.id) } : { title: '', isbn: '', description: '', publishedAt: '', authorIds: [], categoryIds: [] });
+    } else if (kind === 'authors') {
+      const item = record as Author | undefined;
+      setValues(item ? { name: item.name, biography: item.biography ?? '' } : { name: '', biography: '' });
+    } else {
+      const item = record as Category | undefined;
+      setValues(item ? { name: item.name, slug: item.slug } : { name: '', slug: '' });
+    }
+  }, [kind, recordId, record]);
+
+  const loading = books.loading || authors.loading || categories.loading;
+  const loadError = books.error || authors.error || categories.error;
+  const title = kind[0].toUpperCase() + kind.slice(1);
+  function setValue(name: string, value: string | string[]) { setValues((current) => ({ ...current, [name]: value })); }
+  async function submit(event: React.FormEvent) {
+    event.preventDefault(); setError(''); setBusy(true);
+    const payload: Record<string, unknown> = { ...values };
+    if (kind === 'books') {
+      if (!payload.isbn) payload.isbn = null;
+      if (!payload.description) payload.description = null;
+      if (!payload.publishedAt) payload.publishedAt = null;
+    } else if (kind === 'authors' && !payload.biography) payload.biography = null;
+    try {
+      if (kind === 'books') await saveBook(token!, payload, recordId);
+      else if (kind === 'authors') await saveAuthor(token!, payload, recordId);
+      else await saveCategory(token!, payload, recordId);
+      navigate(`/admin/${kind}`, { replace: true });
+    } catch (cause) { setError(cause instanceof Error ? cause.message : 'Could not save this record.'); }
+    finally { setBusy(false); }
+  }
+  async function remove(id: string) {
+    setError(''); setBusy(true);
+    try {
+      if (kind === 'books') await deleteBook(token!, id);
+      else if (kind === 'authors') await deleteAuthor(token!, id);
+      else await deleteCategory(token!, id);
+      setConfirmId('');
+      books.retry(); authors.retry(); categories.retry();
+    } catch (cause) { setError(cause instanceof Error ? cause.message : 'Could not delete this record.'); }
+    finally { setBusy(false); }
+  }
+  const checkboxes = (field: 'authorIds' | 'categoryIds', options: { id: string; name: string }[]) => (
+    <fieldset className="admin-checks"><legend>{field === 'authorIds' ? 'Authors' : 'Categories'}</legend>
+      {options.length ? options.map((option) => {
+        const selected = (values[field] as string[] ?? []).includes(option.id);
+        return <label key={option.id}><input type="checkbox" checked={selected} onChange={() => setValue(field, selected ? (values[field] as string[]).filter((id) => id !== option.id) : [...(values[field] as string[] ?? []), option.id])} />{option.name}</label>;
+      }) : <p className="muted-copy">Create {field === 'authorIds' ? 'an author' : 'a category'} first.</p>}
+    </fieldset>
+  );
+
+  return <div className="page-wrap admin-page">
+    <div className="section-heading admin-heading"><div><span className="eyebrow">Administrator workspace</span><h1>{editing ? `Edit ${kind === 'books' ? 'book' : kind.slice(0, -1)}` : `${title} catalog`}</h1></div>
+      {!editing && <Link className="button button-dark" to={`/admin/${kind}/new`}>Add {kind.slice(0, -1)}</Link>}
+    </div>
+    <nav className="admin-tabs" aria-label="Catalog management">{(['books', 'authors', 'categories'] as AdminKind[]).map((item) => <NavLink key={item} to={`/admin/${item}`}>{item}</NavLink>)}</nav>
+    {error && <div className="form-alert" role="alert">{error}</div>}
+    {editing || locationPathIsNew() ? (
+      editing && !record && !loading ? <div className="empty-state"><h2>Record not found</h2><Link className="text-button" to={`/admin/${kind}`}>Back to {kind}</Link></div> : (
+        <form className="admin-form" onSubmit={submit}>
+          {kind === 'books' ? <>
+            <label>Title<input required maxLength={255} value={String(values.title ?? '')} onChange={(e) => setValue('title', e.target.value)} /></label>
+            <label>ISBN<input maxLength={17} value={String(values.isbn ?? '')} onChange={(e) => setValue('isbn', e.target.value)} placeholder="ISBN-10 or ISBN-13" /></label>
+            <label>Description<textarea maxLength={10000} rows={6} value={String(values.description ?? '')} onChange={(e) => setValue('description', e.target.value)} /></label>
+            <label>Publication date<input type="date" value={String(values.publishedAt ?? '')} onChange={(e) => setValue('publishedAt', e.target.value)} /></label>
+            {checkboxes('authorIds', authors.data ?? [])}{checkboxes('categoryIds', categories.data ?? [])}
+          </> : kind === 'authors' ? <>
+            <label>Name<input required maxLength={200} value={String(values.name ?? '')} onChange={(e) => setValue('name', e.target.value)} /></label>
+            <label>Biography<textarea maxLength={5000} rows={6} value={String(values.biography ?? '')} onChange={(e) => setValue('biography', e.target.value)} /></label>
+          </> : <>
+            <label>Name<input required maxLength={100} value={String(values.name ?? '')} onChange={(e) => setValue('name', e.target.value)} /></label>
+            <label>Slug<input required maxLength={120} pattern="[a-z0-9]+(-[a-z0-9]+)*" value={String(values.slug ?? '')} onChange={(e) => setValue('slug', e.target.value.toLowerCase())} /></label>
+          </>}
+          <div className="admin-actions"><button className="button button-dark" disabled={busy}>{busy ? 'Saving…' : editing ? 'Save changes' : `Create ${kind.slice(0, -1)}`}</button><Link className="text-button" to={`/admin/${kind}`}>Cancel</Link></div>
+        </form>
+      )
+    ) : loading ? <p role="status">Loading {kind}…</p> : loadError ? <ErrorState message={loadError} retry={() => { books.retry(); authors.retry(); categories.retry(); }} /> : records.length ? (
+      <div className="admin-records">{records.map((item) => <article className="admin-record" key={item.id}>
+        <div><h2>{'title' in item ? item.title : item.name}</h2><p>{'title' in item ? item.authors.map((a) => a.name).join(', ') || 'No authors linked' : 'slug' in item ? item.slug : item.biography || 'No biography'}</p></div>
+        <div className="admin-actions"><Link className="text-button" to={`/admin/${kind}/${item.id}/edit`}>Edit</Link>{confirmId === item.id ? <><span>Delete this record?</span><button className="remove-button" disabled={busy} onClick={() => void remove(item.id)}>Confirm</button><button className="text-button" onClick={() => setConfirmId('')}>Cancel</button></> : <button className="remove-button" onClick={() => setConfirmId(item.id)}>Delete</button>}</div>
+      </article>)}</div>
+    ) : <div className="empty-state"><h2>No {kind} yet</h2><p>Add the first record to the catalog.</p><Link className="button button-dark" to={`/admin/${kind}/new`}>Add {kind.slice(0, -1)}</Link></div>}
+  </div>;
+  function locationPathIsNew() { return window.location.pathname.endsWith('/new'); }
+}
+
 export default function App() {
   return (
     <Layout>
@@ -955,6 +1073,15 @@ export default function App() {
         <Route path="/login" element={<AuthPage mode="login" />} />
         <Route path="/register" element={<AuthPage mode="register" />} />
         <Route path="/reading-list" element={<RequireAuth><ReadingListPage /></RequireAuth>} />
+        <Route path="/admin/books" element={<AdminGuard><AdminPage kind="books" /></AdminGuard>} />
+        <Route path="/admin/books/new" element={<AdminGuard><AdminPage kind="books" /></AdminGuard>} />
+        <Route path="/admin/books/:recordId/edit" element={<AdminGuard><AdminPage kind="books" /></AdminGuard>} />
+        <Route path="/admin/authors" element={<AdminGuard><AdminPage kind="authors" /></AdminGuard>} />
+        <Route path="/admin/authors/new" element={<AdminGuard><AdminPage kind="authors" /></AdminGuard>} />
+        <Route path="/admin/authors/:recordId/edit" element={<AdminGuard><AdminPage kind="authors" /></AdminGuard>} />
+        <Route path="/admin/categories" element={<AdminGuard><AdminPage kind="categories" /></AdminGuard>} />
+        <Route path="/admin/categories/new" element={<AdminGuard><AdminPage kind="categories" /></AdminGuard>} />
+        <Route path="/admin/categories/:recordId/edit" element={<AdminGuard><AdminPage kind="categories" /></AdminGuard>} />
         <Route path="/books" element={<CatalogPage />} />
         <Route path="/books/:bookId" element={<BookDetailPage />} />
         <Route path="/authors" element={<AuthorsPage />} />
