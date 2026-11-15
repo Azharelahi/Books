@@ -91,12 +91,25 @@ function Header() {
 }
 
 function Footer() {
+  const { user } = useAuth();
   return (
     <footer className="site-footer">
       <Link className="wordmark footer-mark" to="/">
         marginalia<span>.</span>
       </Link>
       <p>A little more room for a good story.</p>
+      <nav className="footer-nav" aria-label="Explore the site">
+        <Link to="/books">Books</Link>
+        <Link to="/authors">Authors</Link>
+        <Link to="/categories">Shelves</Link>
+        <Link to="/reading-list">Reading list</Link>
+        {user?.role === 'ADMIN' ? <>
+          <Link to="/admin/books">Manage books</Link>
+          <Link to="/admin/authors">Manage authors</Link>
+          <Link to="/admin/categories">Manage shelves</Link>
+        </> : <Link to="/login" state={{ from: { pathname: '/admin/books' } }}>Admin sign in</Link>}
+        {!user && <Link to="/register">Create account</Link>}
+      </nav>
       <span className="footer-note">For the curious · No rush</span>
     </footer>
   );
@@ -172,7 +185,11 @@ function BookGrid({ books }: { books: Book[] }) {
       <div className="empty-state">
         <span aria-hidden="true">⌕</span>
         <h2>No books on this shelf yet</h2>
-        <p>Try a different search or clear a filter to explore the collection.</p>
+        <p>Try a different search or clear a filter. An administrator can sign in to add books.</p>
+        <div className="empty-actions">
+          <Link className="button button-dark" to="/books">Browse all books</Link>
+          <Link className="underlined-link" to="/login" state={{ from: { pathname: '/admin/books' } }}>Sign in as admin</Link>
+        </div>
       </div>
     );
   }
@@ -191,6 +208,7 @@ function PaginationControls({ pagination, onPageChange }: { pagination: Paginati
 }
 
 function HomePage() {
+  const { user } = useAuth();
   const books = useResource((signal) => getBooks({ page: 1, limit: 4 }, signal), []);
   const categories = useResource((signal) => getCategories(signal), []);
   const featuredBooks = books.data?.books ?? [];
@@ -250,6 +268,22 @@ function HomePage() {
         <span className="closing-star" aria-hidden="true">✳</span>
         <p>There’s no rush. The right book has a way of finding its way to you.</p>
         <Link className="underlined-link" to="/books">Take a look around <span aria-hidden="true">↗</span></Link>
+      </section>
+      <section className="home-route-actions section-wrap" aria-label="More things to do">
+        <div>
+          <span className="eyebrow">Keep exploring</span>
+          <h2>Your next step, <em>your way.</em></h2>
+        </div>
+        <div className="route-action-links">
+          <Link className="button button-dark" to="/authors">Meet the authors</Link>
+          <Link className="button button-light" to="/reading-list">Open reading list</Link>
+          {user?.role === 'ADMIN' ? <>
+            <Link className="button button-light" to="/admin/books">Manage books</Link>
+            <Link className="button button-light" to="/admin/authors">Manage authors</Link>
+            <Link className="button button-light" to="/admin/categories">Manage shelves</Link>
+          </> : <Link className="button button-light" to="/login" state={{ from: { pathname: '/admin/books' } }}>Sign in as admin</Link>}
+          {!user && <Link className="button button-light" to="/register">Create account</Link>}
+        </div>
       </section>
     </>
   );
@@ -612,7 +646,7 @@ function AuthorsPage() {
             </Link>
           ))}
         </div>
-      ) : <div className="empty-state"><span aria-hidden="true">✳</span><h2>New voices, coming soon</h2><p>We’re still building this shelf. Come back for a fresh introduction.</p></div>}
+      ) : <div className="empty-state"><span aria-hidden="true">✳</span><h2>New voices, coming soon</h2><p>We’re still building this shelf. An administrator can add authors to the catalog.</p><Link className="button button-dark" to="/login" state={{ from: { pathname: "/admin/authors/new" } }}>Sign in as admin</Link></div>}
     </div>
   );
 }
@@ -689,7 +723,7 @@ function CategoriesPage() {
             </Link>
           ))}
         </div>
-      ) : <div className="empty-state"><span aria-hidden="true">◈</span><h2>The shelves are being arranged</h2><p>There will be something lovely to explore here soon.</p></div>}
+      ) : <div className="empty-state"><span aria-hidden="true">◈</span><h2>The shelves are being arranged</h2><p>An administrator can add categories to start arranging the shelves.</p><Link className="button button-dark" to="/login" state={{ from: { pathname: "/admin/categories/new" } }}>Sign in as admin</Link></div>}
     </div>
   );
 }
@@ -972,6 +1006,7 @@ function AdminPage({ kind }: { kind: AdminKind }) {
   const categories = useResource((signal) => getCategories(signal), [kind]);
   const [values, setValues] = useState<Record<string, string | string[]>>({});
   const [error, setError] = useState('');
+  const [errorDetails, setErrorDetails] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
   const [confirmId, setConfirmId] = useState('');
   const records: AdminRecord[] = kind === 'books' ? books.data?.books ?? [] : kind === 'authors' ? authors.data ?? [] : categories.data ?? [];
@@ -995,7 +1030,7 @@ function AdminPage({ kind }: { kind: AdminKind }) {
   const title = kind[0].toUpperCase() + kind.slice(1);
   function setValue(name: string, value: string | string[]) { setValues((current) => ({ ...current, [name]: value })); }
   async function submit(event: React.FormEvent) {
-    event.preventDefault(); setError(''); setBusy(true);
+    event.preventDefault(); setError(''); setErrorDetails([]); setBusy(true);
     const payload: Record<string, unknown> = { ...values };
     if (kind === 'books') {
       if (!payload.isbn) payload.isbn = null;
@@ -1007,18 +1042,24 @@ function AdminPage({ kind }: { kind: AdminKind }) {
       else if (kind === 'authors') await saveAuthor(token!, payload, recordId);
       else await saveCategory(token!, payload, recordId);
       navigate(`/admin/${kind}`, { replace: true });
-    } catch (cause) { setError(cause instanceof Error ? cause.message : 'Could not save this record.'); }
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Could not save this record.');
+      if (cause instanceof ApiError) setErrorDetails(cause.details.map((detail) => [detail.path, detail.message].filter(Boolean).join(': ')));
+    }
     finally { setBusy(false); }
   }
   async function remove(id: string) {
-    setError(''); setBusy(true);
+    setError(''); setErrorDetails([]); setBusy(true);
     try {
       if (kind === 'books') await deleteBook(token!, id);
       else if (kind === 'authors') await deleteAuthor(token!, id);
       else await deleteCategory(token!, id);
       setConfirmId('');
       books.retry(); authors.retry(); categories.retry();
-    } catch (cause) { setError(cause instanceof Error ? cause.message : 'Could not delete this record.'); }
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Could not delete this record.');
+      if (cause instanceof ApiError) setErrorDetails(cause.details.map((detail) => [detail.path, detail.message].filter(Boolean).join(': ')));
+    }
     finally { setBusy(false); }
   }
   const checkboxes = (field: 'authorIds' | 'categoryIds', options: { id: string; name: string }[]) => (
@@ -1035,7 +1076,7 @@ function AdminPage({ kind }: { kind: AdminKind }) {
       {!editing && <Link className="button button-dark" to={`/admin/${kind}/new`}>Add {kind.slice(0, -1)}</Link>}
     </div>
     <nav className="admin-tabs" aria-label="Catalog management">{(['books', 'authors', 'categories'] as AdminKind[]).map((item) => <NavLink key={item} to={`/admin/${item}`}>{item}</NavLink>)}</nav>
-    {error && <div className="form-alert" role="alert">{error}</div>}
+    {error && <div className="form-alert" role="alert"><p>{error}</p>{errorDetails.length > 0 && <ul>{errorDetails.map((detail, index) => <li key={`${detail}-${index}`}>{detail}</li>)}</ul>}</div>}
     {editing || locationPathIsNew() ? (
       editing && !record && !loading ? <div className="empty-state"><h2>Record not found</h2><Link className="text-button" to={`/admin/${kind}`}>Back to {kind}</Link></div> : (
         <form className="admin-form" onSubmit={submit}>

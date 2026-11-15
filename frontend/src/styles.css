@@ -478,3 +478,16 @@ h1, h2, h3, p { margin-top: 0; }
   .admin-record { align-items: flex-start; flex-direction: column; }
   .admin-tabs { gap: 18px; }
 }
+
+.footer-nav { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px 16px; }
+.footer-nav a { color: #59665a; font-size: 10px; text-decoration: none; white-space: nowrap; }
+.footer-nav a:hover { color: #a96843; text-decoration: underline; text-underline-offset: 3px; }
+.home-route-actions { display: flex; align-items: center; justify-content: space-between; gap: 28px; margin-bottom: 60px; padding: 28px; background: #f0eee5; }
+.home-route-actions h2 { margin: 8px 0 0; font: 400 clamp(25px, 3vw, 37px)/1.1 var(--serif); }
+.home-route-actions h2 em { color: #71816d; }
+.route-action-links, .empty-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.button-light { display: inline-flex; align-items: center; justify-content: center; min-height: 42px; padding: 0 15px; border: 1px solid #c9d0c3; color: #354b3c; background: transparent; font-size: 10px; text-decoration: none; }
+.button-light:hover { background: #e2e6dc; }
+.empty-actions { justify-content: center; margin-top: 20px; }
+.empty-state > .button { display: inline-flex; margin-top: 20px; }
+@media (max-width: 620px) { .footer-nav { justify-content: flex-start; gap: 12px 16px; } .home-route-actions { align-items: flex-start; flex-direction: column; margin-bottom: 40px; padding: 22px 17px; } }

@@ -5,8 +5,12 @@ const titleSchema = z.string().trim().min(1, 'Title is required').max(255, 'Titl
 const isbnSchema = z
   .string()
   .trim()
-  .max(17, 'ISBN is too long')
-  .regex(/^(?:[0-9]{9}[0-9X]|[0-9]{13})$/, 'ISBN must be ISBN-10 or ISBN-13')
+  .max(32, 'ISBN is too long')
+  .transform((value) => value
+    .replace(/^ISBN(?:-1[03])?\s*:?\s*/i, '')
+    .replace(/[\s‐‑‒–—−-]/g, '')
+    .toUpperCase())
+  .pipe(z.string().regex(/^(?:[0-9]{9}[0-9X]|[0-9]{13})$/, 'ISBN must be ISBN-10 or ISBN-13'))
   .nullable();
 const dateSchema = z.iso.date().transform((value) => new Date(`${value}T00:00:00.000Z`)).nullable();
 
