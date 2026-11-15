@@ -2,9 +2,9 @@ import { compare, hash } from 'bcryptjs';
 import jwt, { type SignOptions } from 'jsonwebtoken';
 import { Prisma } from '../../generated/prisma/client.js';
 import { UserRole } from '../../generated/prisma/enums.js';
-import { loadConfig } from '../../config/env.js';
+import { config } from '../../config/env.js';
 import { ApiError } from '../../lib/api-error.js';
-import { createPrismaClient } from '../../lib/prisma.js';
+import { prisma } from '../../lib/prisma.js';
 
 export type RegisterUserInput = {
   email: string;
@@ -19,7 +19,7 @@ export type AuthenticatedUser = {
 
 export async function registerUser({ email, password }: RegisterUserInput) {
   const normalizedEmail = email.trim().toLowerCase();
-  const prisma = createPrismaClient(loadConfig().DATABASE_URL);
+
 
   try {
     const passwordHash = await hash(password, 12);
@@ -47,13 +47,13 @@ export async function registerUser({ email, password }: RegisterUserInput) {
 
     throw error;
   } finally {
-    await prisma.$disconnect();
+
   }
 }
 
 export async function loginUser({ email, password }: RegisterUserInput): Promise<{ token: string; user: AuthenticatedUser }> {
   const normalizedEmail = email.trim().toLowerCase();
-  const prisma = createPrismaClient(loadConfig().DATABASE_URL);
+
 
   try {
     const user = await prisma.user.findUnique({ where: { email: normalizedEmail } });
@@ -66,7 +66,7 @@ export async function loginUser({ email, password }: RegisterUserInput): Promise
       throw new ApiError(401, 'INVALID_CREDENTIALS', 'Invalid email or password');
     }
 
-    const config = loadConfig();
+
     const signOptions: SignOptions = {
       expiresIn: config.JWT_EXPIRES_IN as SignOptions['expiresIn'],
     };
@@ -90,6 +90,6 @@ export async function loginUser({ email, password }: RegisterUserInput): Promise
       },
     };
   } finally {
-    await prisma.$disconnect();
+
   }
 }

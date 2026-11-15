@@ -1,7 +1,6 @@
 import { Prisma } from '../../generated/prisma/client.js';
-import { loadConfig } from '../../config/env.js';
 import { ApiError } from '../../lib/api-error.js';
-import { createPrismaClient } from '../../lib/prisma.js';
+import { prisma } from '../../lib/prisma.js';
 
 export type AuthorRecord = {
   id: string;
@@ -12,19 +11,19 @@ export type AuthorRecord = {
 };
 
 export async function listAuthors(): Promise<AuthorRecord[]> {
-  const prisma = createPrismaClient(loadConfig().DATABASE_URL);
+
 
   try {
     return await prisma.author.findMany({
       orderBy: { name: 'asc' },
     });
   } finally {
-    await prisma.$disconnect();
+
   }
 }
 
 export async function getAuthorById(authorId: string): Promise<AuthorRecord> {
-  const prisma = createPrismaClient(loadConfig().DATABASE_URL);
+
 
   try {
     const author = await prisma.author.findUnique({ where: { id: authorId } });
@@ -34,12 +33,12 @@ export async function getAuthorById(authorId: string): Promise<AuthorRecord> {
 
     return author;
   } finally {
-    await prisma.$disconnect();
+
   }
 }
 
 export async function createAuthor(input: { name: string; biography?: string | null }): Promise<AuthorRecord> {
-  const prisma = createPrismaClient(loadConfig().DATABASE_URL);
+
 
   try {
     return await prisma.author.create({
@@ -55,12 +54,12 @@ export async function createAuthor(input: { name: string; biography?: string | n
 
     throw error;
   } finally {
-    await prisma.$disconnect();
+
   }
 }
 
 export async function updateAuthor(authorId: string, input: { name?: string; biography?: string | null }): Promise<AuthorRecord> {
-  const prisma = createPrismaClient(loadConfig().DATABASE_URL);
+
 
   const data: { name?: string; biography?: string | null } = {};
   if (typeof input.name === 'string') {
@@ -90,12 +89,12 @@ export async function updateAuthor(authorId: string, input: { name?: string; bio
 
     throw error;
   } finally {
-    await prisma.$disconnect();
+
   }
 }
 
 export async function deleteAuthor(authorId: string): Promise<void> {
-  const prisma = createPrismaClient(loadConfig().DATABASE_URL);
+
 
   try {
     await prisma.author.delete({ where: { id: authorId } });
@@ -106,6 +105,6 @@ export async function deleteAuthor(authorId: string): Promise<void> {
 
     throw error;
   } finally {
-    await prisma.$disconnect();
+
   }
 }

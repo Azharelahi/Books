@@ -5,7 +5,7 @@
 - **Runtime:** Node.js with TypeScript and Express.
 - **Database:** PostgreSQL accessed through Prisma ORM.
 - **Validation:** Zod schemas at HTTP boundaries.
-- **Authentication:** JWT bearer tokens; bcrypt password hashing.
+- **Authentication:** JWT bearer tokens signed with a required, private `JWT_SECRET` of at least 32 characters; bcrypt password hashing.
 - **API prefix:** `/api/v1`.
 - **Catalog model:** Books, authors, and categories form a shared catalog. Catalog reads are available to clients; catalog writes are restricted to administrators. Regular users manage only their own reading-list entries.
 - **Documentation and manual testing:** OpenAPI documentation and a Postman collection/environment.
@@ -78,8 +78,9 @@ Each feature module owns its HTTP routes, controllers, validation schemas, and b
 | Categories | Public catalog | Administrator |
 | Reading list | Authenticated owner only | Authenticated owner only |
 | Registration/login | Public | Public |
+| Admin account | Not public | `npm run db:seed` using `ADMIN_EMAIL` and `ADMIN_PASSWORD` |
 
-The user role defaults to `USER`; the admin role must be granted through a controlled seed/administrative process, never from public registration input. Reading-list queries and mutations must always be scoped by the authenticated user's ID.
+The user role defaults to `USER`; the admin role is granted through the idempotent Prisma seed, never through public registration input. Set `JWT_SECRET` to a unique random value of at least 32 characters in every environment. The server refuses to start if it is absent or invalid. The API and seed use a shared Prisma client; the server connects on startup and disconnects during graceful shutdown.
 
 ## Initial route map
 
@@ -147,15 +148,16 @@ Work on one step at a time. After each step, run its listed checks and review th
 
 ### Stage 3 — Connect PostgreSQL and Prisma
 
-**Build:** Add Prisma and the PostgreSQL connection configuration; define the initial User, Author, Category, Book, and ReadingListEntry models, relations, and constraints; create and apply the first migration. Copy `.env.example` to `.env` and set a local `DATABASE_URL`. Never commit `.env` or use production credentials for development checks. No account credentials or sample catalog data are seeded; the database verification script creates and removes uniquely named temporary records.
+**Build:** Add Prisma and the PostgreSQL connection configuration; define the initial User, Author, Category, Book, and ReadingListEntry models, relations, and constraints; create and apply the first migration. Copy `.env.example` to `.env`, set a local `DATABASE_URL`, and generate a private `JWT_SECRET` (at least 32 characters). Never commit `.env` or use production credentials for development checks. The database verification script creates and removes uniquely named temporary records. Set `ADMIN_EMAIL` and `ADMIN_PASSWORD`, then run `npm run db:seed` to create or promote the administrator account.
 
 **Verify before continuing:**
 
 - Prisma schema validation succeeds.
 - Apply pending migrations with `npm run db:deploy` against the configured local database.
+- `npm run db:seed` provisions the configured admin account; rerunning it updates that account's password and ensures its ADMIN role.
 - Run `npm run db:verify` to test Prisma connection, read/write, and constraints.
 - Unique and foreign-key constraints behave as designed.
-- The API starts only after establishing its database connection and disconnects Prisma on shutdown.
+- The API starts only after establishing its shared database connection and disconnects Prisma on shutdown.
 
 ### Stage 4 — Register users
 

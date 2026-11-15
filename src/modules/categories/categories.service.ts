@@ -1,7 +1,6 @@
 import { Prisma } from '../../generated/prisma/client.js';
-import { loadConfig } from '../../config/env.js';
 import { ApiError } from '../../lib/api-error.js';
-import { createPrismaClient } from '../../lib/prisma.js';
+import { prisma } from '../../lib/prisma.js';
 
 export type CategoryRecord = {
   id: string;
@@ -12,17 +11,17 @@ export type CategoryRecord = {
 };
 
 export async function listCategories(): Promise<CategoryRecord[]> {
-  const prisma = createPrismaClient(loadConfig().DATABASE_URL);
+
 
   try {
     return await prisma.category.findMany({ orderBy: { name: 'asc' } });
   } finally {
-    await prisma.$disconnect();
+
   }
 }
 
 export async function getCategoryById(categoryId: string): Promise<CategoryRecord> {
-  const prisma = createPrismaClient(loadConfig().DATABASE_URL);
+
 
   try {
     const category = await prisma.category.findUnique({ where: { id: categoryId } });
@@ -32,12 +31,12 @@ export async function getCategoryById(categoryId: string): Promise<CategoryRecor
 
     return category;
   } finally {
-    await prisma.$disconnect();
+
   }
 }
 
 export async function createCategory(input: { name: string; slug: string }): Promise<CategoryRecord> {
-  const prisma = createPrismaClient(loadConfig().DATABASE_URL);
+
 
   try {
     return await prisma.category.create({ data: input });
@@ -48,7 +47,7 @@ export async function createCategory(input: { name: string; slug: string }): Pro
 
     throw error;
   } finally {
-    await prisma.$disconnect();
+
   }
 }
 
@@ -56,7 +55,7 @@ export async function updateCategory(
   categoryId: string,
   input: { name?: string; slug?: string },
 ): Promise<CategoryRecord> {
-  const prisma = createPrismaClient(loadConfig().DATABASE_URL);
+
 
   try {
     return await prisma.category.update({ where: { id: categoryId }, data: input });
@@ -72,12 +71,12 @@ export async function updateCategory(
 
     throw error;
   } finally {
-    await prisma.$disconnect();
+
   }
 }
 
 export async function deleteCategory(categoryId: string): Promise<void> {
-  const prisma = createPrismaClient(loadConfig().DATABASE_URL);
+
 
   try {
     await prisma.category.delete({ where: { id: categoryId } });
@@ -88,6 +87,6 @@ export async function deleteCategory(categoryId: string): Promise<void> {
 
     throw error;
   } finally {
-    await prisma.$disconnect();
+
   }
 }

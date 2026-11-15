@@ -1,22 +1,8 @@
 import { app } from './app.js';
-import { EnvironmentConfigError, loadConfig } from './config/env.js';
-import { createPrismaClient } from './lib/prisma.js';
+import { config } from './config/env.js';
+import { prisma } from './lib/prisma.js';
 
 async function startServer(): Promise<void> {
-  let config: ReturnType<typeof loadConfig>;
-
-  try {
-    config = loadConfig();
-  } catch (error) {
-    if (!(error instanceof EnvironmentConfigError)) throw error;
-
-    console.error(`Invalid environment configuration: ${error.message}`);
-    process.exitCode = 1;
-    return;
-  }
-
-  const prisma = createPrismaClient(config.DATABASE_URL);
-
   try {
     await prisma.$connect();
   } catch (error) {

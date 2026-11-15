@@ -1,7 +1,6 @@
-import { Prisma } from '../../generated/prisma/client.js';
-import { loadConfig } from '../../config/env.js';
+import { Prisma, type PrismaClient } from '../../generated/prisma/client.js';
 import { ApiError } from '../../lib/api-error.js';
-import { createPrismaClient } from '../../lib/prisma.js';
+import { prisma } from '../../lib/prisma.js';
 import type { CreateBookInput, ListBooksQuery, UpdateBookInput } from './books.schemas.js';
 
 const bookInclude = {
@@ -25,7 +24,7 @@ function mapBookConstraintError(error: unknown): never {
 }
 
 async function validateReferences(
-  prisma: ReturnType<typeof createPrismaClient>,
+  prisma: PrismaClient,
   authorIds: string[],
   categoryIds: string[],
 ): Promise<void> {
@@ -50,7 +49,7 @@ async function validateReferences(
 }
 
 export async function listBooks(query: ListBooksQuery) {
-  const prisma = createPrismaClient(loadConfig().DATABASE_URL);
+
   const where: Prisma.BookWhereInput = {
     ...(query.search
       ? { title: { contains: query.search, mode: 'insensitive' } }
@@ -82,12 +81,12 @@ export async function listBooks(query: ListBooksQuery) {
       },
     };
   } finally {
-    await prisma.$disconnect();
+
   }
 }
 
 export async function getBookById(bookId: string) {
-  const prisma = createPrismaClient(loadConfig().DATABASE_URL);
+
 
   try {
     const book = await prisma.book.findUnique({ where: { id: bookId }, include: bookInclude });
@@ -96,12 +95,12 @@ export async function getBookById(bookId: string) {
     }
     return book;
   } finally {
-    await prisma.$disconnect();
+
   }
 }
 
 export async function createBook(input: CreateBookInput) {
-  const prisma = createPrismaClient(loadConfig().DATABASE_URL);
+
 
   try {
     await validateReferences(prisma, input.authorIds, input.categoryIds);
@@ -119,12 +118,12 @@ export async function createBook(input: CreateBookInput) {
   } catch (error) {
     mapBookConstraintError(error);
   } finally {
-    await prisma.$disconnect();
+
   }
 }
 
 export async function updateBook(bookId: string, input: UpdateBookInput) {
-  const prisma = createPrismaClient(loadConfig().DATABASE_URL);
+
   const data: Prisma.BookUpdateInput = {};
 
   if (input.title !== undefined) data.title = input.title;
@@ -145,18 +144,18 @@ export async function updateBook(bookId: string, input: UpdateBookInput) {
   } catch (error) {
     mapBookConstraintError(error);
   } finally {
-    await prisma.$disconnect();
+
   }
 }
 
 export async function deleteBook(bookId: string): Promise<void> {
-  const prisma = createPrismaClient(loadConfig().DATABASE_URL);
+
 
   try {
     await prisma.book.delete({ where: { id: bookId } });
   } catch (error) {
     mapBookConstraintError(error);
   } finally {
-    await prisma.$disconnect();
+
   }
 }

@@ -1,7 +1,6 @@
 import { Prisma } from '../../generated/prisma/client.js';
-import { loadConfig } from '../../config/env.js';
 import { ApiError } from '../../lib/api-error.js';
-import { createPrismaClient } from '../../lib/prisma.js';
+import { prisma } from '../../lib/prisma.js';
 import type { UpdateReadingListItemInput } from './reading-list.schemas.js';
 
 const readingListInclude = {
@@ -14,7 +13,7 @@ const readingListInclude = {
 };
 
 export async function listReadingList(userId: string) {
-  const prisma = createPrismaClient(loadConfig().DATABASE_URL);
+
 
   try {
     return await prisma.readingListEntry.findMany({
@@ -23,12 +22,12 @@ export async function listReadingList(userId: string) {
       orderBy: { createdAt: 'desc' },
     });
   } finally {
-    await prisma.$disconnect();
+
   }
 }
 
 export async function addReadingListItem(userId: string, bookId: string) {
-  const prisma = createPrismaClient(loadConfig().DATABASE_URL);
+
 
   try {
     const bookExists = await prisma.book.findUnique({ where: { id: bookId }, select: { id: true } });
@@ -51,7 +50,7 @@ export async function addReadingListItem(userId: string, bookId: string) {
     }
     throw error;
   } finally {
-    await prisma.$disconnect();
+
   }
 }
 
@@ -60,7 +59,7 @@ export async function updateReadingListItem(
   itemId: string,
   input: UpdateReadingListItemInput,
 ) {
-  const prisma = createPrismaClient(loadConfig().DATABASE_URL);
+
 
   try {
     const result = await prisma.readingListEntry.updateMany({
@@ -81,12 +80,12 @@ export async function updateReadingListItem(
 
     return entry;
   } finally {
-    await prisma.$disconnect();
+
   }
 }
 
 export async function deleteReadingListItem(userId: string, itemId: string): Promise<void> {
-  const prisma = createPrismaClient(loadConfig().DATABASE_URL);
+
 
   try {
     const result = await prisma.readingListEntry.deleteMany({ where: { id: itemId, userId } });
@@ -94,6 +93,6 @@ export async function deleteReadingListItem(userId: string, itemId: string): Pro
       throw new ApiError(404, 'READING_LIST_ITEM_NOT_FOUND', 'Reading-list item not found');
     }
   } finally {
-    await prisma.$disconnect();
+
   }
 }
