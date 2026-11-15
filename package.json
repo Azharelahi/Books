@@ -12,7 +12,8 @@
     "db:migrate": "prisma migrate dev",
     "db:deploy": "prisma migrate deploy",
     "db:verify": "tsx scripts/verify-db.ts",
-    "db:seed": "prisma db seed"
+    "db:seed": "prisma db seed",
+    "db:seed:catalog": "tsx scripts/seed-demo-catalog.ts"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.10.1",
