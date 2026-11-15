@@ -4,9 +4,9 @@ import { once } from 'node:events';
 import type { AddressInfo } from 'node:net';
 import test from 'node:test';
 import jwt from 'jsonwebtoken';
-import { app } from '../../app.js';
-import { loadConfig } from '../../config/env.js';
-import { createPrismaClient } from '../../lib/prisma.js';
+import { app } from '../../../src/app.js';
+import { loadConfig } from '../../../src/config/env.js';
+import { createPrismaClient } from '../../../src/lib/prisma.js';
 
 process.env.NODE_ENV ??= 'development';
 process.env.JWT_SECRET ??= 'development-secret-key-change-me-please';
@@ -171,3 +171,4 @@ test('reading-list routes require authentication and validate payloads', async (
     });
   }
 });
+

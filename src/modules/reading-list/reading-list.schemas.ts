@@ -1,4 +1,7 @@
 import { z } from 'zod';
+import { paginationQuerySchema } from '../../lib/pagination.js';
+
+export const listReadingListQuerySchema = paginationQuerySchema;
 
 export const readingListItemIdParamSchema = z.object({
   itemId: z.string().uuid('Reading-list item ID must be a valid UUID'),

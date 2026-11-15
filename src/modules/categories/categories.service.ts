@@ -1,6 +1,6 @@
-import { Prisma } from '../../generated/prisma/client.js';
 import { ApiError } from '../../lib/api-error.js';
 import { prisma } from '../../lib/prisma.js';
+import type { PaginationQuery } from '../../lib/pagination.js';
 
 export type CategoryRecord = {
   id: string;
@@ -10,83 +10,29 @@ export type CategoryRecord = {
   updatedAt: Date;
 };
 
-export async function listCategories(): Promise<CategoryRecord[]> {
-
-
-  try {
-    return await prisma.category.findMany({ orderBy: { name: 'asc' } });
-  } finally {
-
-  }
+export async function listCategories(query: PaginationQuery) {
+  const skip = (query.page - 1) * query.limit;
+  const [categories, total] = await prisma.$transaction([
+    prisma.category.findMany({ orderBy: [{ name: 'asc' }, { id: 'asc' }], skip, take: query.limit }),
+    prisma.category.count(),
+  ]);
+  return { categories, pagination: { ...query, total, totalPages: Math.ceil(total / query.limit) } };
 }
 
 export async function getCategoryById(categoryId: string): Promise<CategoryRecord> {
-
-
-  try {
-    const category = await prisma.category.findUnique({ where: { id: categoryId } });
-    if (!category) {
-      throw new ApiError(404, 'CATEGORY_NOT_FOUND', 'Category not found');
-    }
-
-    return category;
-  } finally {
-
-  }
+  const category = await prisma.category.findUnique({ where: { id: categoryId } });
+  if (!category) throw new ApiError(404, 'CATEGORY_NOT_FOUND', 'Category not found');
+  return category;
 }
 
 export async function createCategory(input: { name: string; slug: string }): Promise<CategoryRecord> {
-
-
-  try {
-    return await prisma.category.create({ data: input });
-  } catch (error) {
-    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
-      throw new ApiError(409, 'CATEGORY_ALREADY_EXISTS', 'A category with this name or slug already exists');
-    }
-
-    throw error;
-  } finally {
-
-  }
+  return prisma.category.create({ data: input });
 }
 
-export async function updateCategory(
-  categoryId: string,
-  input: { name?: string; slug?: string },
-): Promise<CategoryRecord> {
-
-
-  try {
-    return await prisma.category.update({ where: { id: categoryId }, data: input });
-  } catch (error) {
-    if (error instanceof Prisma.PrismaClientKnownRequestError) {
-      if (error.code === 'P2025') {
-        throw new ApiError(404, 'CATEGORY_NOT_FOUND', 'Category not found');
-      }
-      if (error.code === 'P2002') {
-        throw new ApiError(409, 'CATEGORY_ALREADY_EXISTS', 'A category with this name or slug already exists');
-      }
-    }
-
-    throw error;
-  } finally {
-
-  }
+export async function updateCategory(categoryId: string, input: { name?: string; slug?: string }): Promise<CategoryRecord> {
+  return prisma.category.update({ where: { id: categoryId }, data: input });
 }
 
 export async function deleteCategory(categoryId: string): Promise<void> {
-
-
-  try {
-    await prisma.category.delete({ where: { id: categoryId } });
-  } catch (error) {
-    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
-      throw new ApiError(404, 'CATEGORY_NOT_FOUND', 'Category not found');
-    }
-
-    throw error;
-  } finally {
-
-  }
+  await prisma.category.delete({ where: { id: categoryId } });
 }

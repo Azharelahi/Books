@@ -4,7 +4,7 @@ import { once } from 'node:events';
 import type { AddressInfo } from 'node:net';
 import test from 'node:test';
 import jwt from 'jsonwebtoken';
-import { app } from '../../app.js';
+import { app } from '../../../src/app.js';
 
 process.env.NODE_ENV ??= 'development';
 process.env.JWT_SECRET ??= 'development-secret-key-change-me-please';
@@ -102,3 +102,4 @@ test('author detail route rejects invalid UUIDs', async () => {
     assert.equal(payload.error.code, 'VALIDATION_ERROR');
   });
 });
+

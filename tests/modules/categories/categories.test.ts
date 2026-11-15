@@ -4,7 +4,7 @@ import { once } from 'node:events';
 import type { AddressInfo } from 'node:net';
 import test from 'node:test';
 import jwt from 'jsonwebtoken';
-import { app } from '../../app.js';
+import { app } from '../../../src/app.js';
 
 process.env.NODE_ENV ??= 'development';
 process.env.JWT_SECRET ??= 'development-secret-key-change-me-please';
@@ -156,3 +156,4 @@ test('category routes reject malformed IDs and unknown input fields', async () =
     assert.equal(invalidBodyResponse.status, 400);
   });
 });
+

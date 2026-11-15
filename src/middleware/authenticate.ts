@@ -1,7 +1,7 @@
 import type { NextFunction, Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
 import { UserRole } from '../generated/prisma/enums.js';
-import { loadConfig } from '../config/env.js';
+import { config } from '../config/env.js';
 import { ApiError } from '../lib/api-error.js';
 
 export function authenticate(request: Request, _response: Response, next: NextFunction): void {
@@ -19,25 +19,17 @@ export function authenticate(request: Request, _response: Response, next: NextFu
   }
 
   try {
-    const config = loadConfig();
-    const payload = jwt.verify(token, config.JWT_SECRET) as jwt.JwtPayload & {
-      sub?: string;
-      email?: string;
-      role?: UserRole;
-    };
-
-    const userId = payload.sub ?? payload.userId ?? payload.id;
-    const email = payload.email;
-    const role = payload.role ?? UserRole.USER;
-
-    if (!userId || !email) {
-      throw new Error('Token payload missing user identity');
+    const payload = jwt.verify(token, config.JWT_SECRET, { algorithms: ['HS256'] });
+    if (typeof payload === 'string' || typeof payload.sub !== 'string' ||
+      typeof payload.email !== 'string' ||
+      (payload.role !== UserRole.ADMIN && payload.role !== UserRole.USER)) {
+      throw new Error('Token payload missing required claims');
     }
 
     request.user = {
-      id: String(userId),
-      email: String(email),
-      role: role as UserRole,
+      id: payload.sub,
+      email: payload.email,
+      role: payload.role,
     };
     next();
   } catch {

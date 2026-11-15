@@ -3,6 +3,7 @@ import { UserRole } from '../../generated/prisma/enums.js';
 import { authenticate } from '../../middleware/authenticate.js';
 import { authorize } from '../../middleware/authorize.js';
 import { validate } from '../../middleware/validate.js';
+import { paginationQuerySchema } from '../../lib/pagination.js';
 import {
   createCategoryHandler,
   deleteCategoryHandler,
@@ -18,7 +19,7 @@ import {
 
 const categoriesRouter = Router();
 
-categoriesRouter.get('/', listCategoriesHandler);
+categoriesRouter.get('/', validate({ query: paginationQuerySchema }), listCategoriesHandler);
 categoriesRouter.get('/:categoryId', validate({ params: categoryIdParamSchema }), getCategoryHandler);
 categoriesRouter.post(
   '/',

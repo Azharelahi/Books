@@ -9,6 +9,7 @@ import {
 } from './reading-list.controller.js';
 import {
   addReadingListItemSchema,
+  listReadingListQuerySchema,
   readingListItemIdParamSchema,
   updateReadingListItemSchema,
 } from './reading-list.schemas.js';
@@ -16,7 +17,7 @@ import {
 const readingListRouter = Router();
 
 readingListRouter.use(authenticate);
-readingListRouter.get('/', listReadingListHandler);
+readingListRouter.get('/', validate({ query: listReadingListQuerySchema }), listReadingListHandler);
 readingListRouter.post('/', validate({ body: addReadingListItemSchema }), addReadingListItemHandler);
 readingListRouter.patch(
   '/:itemId',

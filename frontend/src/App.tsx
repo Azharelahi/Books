@@ -6,9 +6,11 @@ import {
   deleteReadingListItem,
   getAuthor,
   getAuthors,
+  getAuthorsPage,
   getBook,
   getBooks,
   getCategories,
+  getCategoriesPage,
   getCategory,
   getReadingList,
   saveBook, deleteBook, saveAuthor, deleteAuthor, saveCategory, deleteCategory,
@@ -199,7 +201,7 @@ function BookGrid({ books }: { books: Book[] }) {
 function PaginationControls({ pagination, onPageChange }: { pagination: Pagination; onPageChange: (page: number) => void }) {
   if (pagination.totalPages <= 1) return null;
   return (
-    <nav className="pagination" aria-label="Book pages">
+    <nav className="pagination" aria-label="Result pages">
       <button disabled={pagination.page <= 1} onClick={() => onPageChange(pagination.page - 1)}>← Previous</button>
       <span>Page <strong>{pagination.page}</strong> of {pagination.totalPages}</span>
       <button disabled={pagination.page >= pagination.totalPages} onClick={() => onPageChange(pagination.page + 1)}>Next →</button>
@@ -627,7 +629,8 @@ function BookDetailPage() {
 }
 
 function AuthorsPage() {
-  const result = useResource((signal) => getAuthors(signal), []);
+  const [page, setPage] = useState(1);
+  const result = useResource((signal) => getAuthorsPage({ page, limit: 12 }, signal), [page]);
   return (
     <div className="page-wrap">
       <div className="page-intro">
@@ -635,9 +638,9 @@ function AuthorsPage() {
         <h1>Meet the <em>storytellers.</em></h1>
         <p>Every book opens a conversation. Start with the people who put words to paper.</p>
       </div>
-      {result.error ? <ErrorState message={result.error} retry={result.retry} /> : result.loading ? <div className="people-skeleton" /> : result.data?.length ? (
+      {result.error ? <ErrorState message={result.error} retry={result.retry} /> : result.loading ? <div className="people-skeleton" /> : result.data?.authors.length ? (
         <div className="author-grid">
-          {result.data.map((author, index) => (
+          {result.data.authors.map((author, index) => (
             <Link className={`author-card author-tone-${index % 4}`} to={`/authors/${author.id}`} key={author.id}>
               <span className="author-monogram" aria-hidden="true">{author.name.trim().charAt(0).toUpperCase()}</span>
               <span className="eyebrow">Author no. {String(index + 1).padStart(2, '0')}</span>
@@ -647,6 +650,7 @@ function AuthorsPage() {
           ))}
         </div>
       ) : <div className="empty-state"><span aria-hidden="true">✳</span><h2>New voices, coming soon</h2><p>We’re still building this shelf. An administrator can add authors to the catalog.</p><Link className="button button-dark" to="/login" state={{ from: { pathname: "/admin/authors/new" } }}>Sign in as admin</Link></div>}
+      {result.data && <PaginationControls pagination={result.data.pagination} onPageChange={setPage} />}
     </div>
   );
 }
@@ -704,7 +708,8 @@ function AuthorDetailPage() {
 }
 
 function CategoriesPage() {
-  const result = useResource((signal) => getCategories(signal), []);
+  const [page, setPage] = useState(1);
+  const result = useResource((signal) => getCategoriesPage({ page, limit: 12 }, signal), [page]);
   return (
     <div className="page-wrap">
       <div className="page-intro">
@@ -712,9 +717,9 @@ function CategoriesPage() {
         <h1>Browse by <em>feeling.</em></h1>
         <p>Follow your curiosity. You never know what might be waiting on the next shelf.</p>
       </div>
-      {result.error ? <ErrorState message={result.error} retry={result.retry} /> : result.loading ? <div className="category-skeleton" /> : result.data?.length ? (
+      {result.error ? <ErrorState message={result.error} retry={result.retry} /> : result.loading ? <div className="category-skeleton" /> : result.data?.categories.length ? (
         <div className="shelf-grid">
-          {result.data.map((category, index) => (
+          {result.data.categories.map((category, index) => (
             <Link className={`shelf-card shelf-${index % 5}`} to={`/categories/${category.id}`} key={category.id}>
               <span className="shelf-index">SHELF {String(index + 1).padStart(2, '0')}</span>
               <span className="shelf-symbol" aria-hidden="true">{['✳', '◌', '⌁', '✷', '◈'][index % 5]}</span>
@@ -724,6 +729,7 @@ function CategoriesPage() {
           ))}
         </div>
       ) : <div className="empty-state"><span aria-hidden="true">◈</span><h2>The shelves are being arranged</h2><p>An administrator can add categories to start arranging the shelves.</p><Link className="button button-dark" to="/login" state={{ from: { pathname: "/admin/categories/new" } }}>Sign in as admin</Link></div>}
+      {result.data && <PaginationControls pagination={result.data.pagination} onPageChange={setPage} />}
     </div>
   );
 }
@@ -781,6 +787,8 @@ function ReadingListPage() {
   const location = useLocation();
   const restoredNotes = (location.state as { readingNotes?: Record<string, string> } | null)?.readingNotes;
   const [entries, setEntries] = useState<ReadingListEntry[]>([]);
+  const [pagination, setPagination] = useState<Pagination | null>(null);
+  const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
   const [actionError, setActionError] = useState('');
@@ -795,11 +803,12 @@ function ReadingListPage() {
     const controller = new AbortController();
     setLoading(true);
     setLoadError('');
-    getReadingList(token, controller.signal)
+    getReadingList(token, { page, limit: 12 }, controller.signal)
       .then((result) => {
-        setEntries(result);
-        const savedNotes = Object.fromEntries(result.map((entry) => [entry.id, entry.notes || '']));
-        for (const entry of result) {
+        setEntries(result.entries);
+        setPagination(result.pagination);
+        const savedNotes = Object.fromEntries(result.entries.map((entry) => [entry.id, entry.notes || '']));
+        for (const entry of result.entries) {
           const draft = restoredNotes?.[entry.id];
           if (typeof draft === 'string') savedNotes[entry.id] = draft;
         }
@@ -817,7 +826,7 @@ function ReadingListPage() {
         if (!controller.signal.aborted) setLoading(false);
       });
     return () => controller.abort();
-  }, [token, attempt]);
+  }, [token, attempt, page]);
 
   async function handleEntryAction(itemId: string, action: () => Promise<ReadingListEntry | void>) {
     setBusyId(itemId);
@@ -857,6 +866,8 @@ function ReadingListPage() {
     });
     if (removed) {
       setEntries((current) => current.filter((entry) => entry.id !== itemId));
+      if (entries.length === 1 && page > 1) setPage((current) => current - 1);
+      else setPagination((current) => current ? { ...current, total: Math.max(0, current.total - 1), totalPages: Math.ceil(Math.max(0, current.total - 1) / current.limit) } : current);
       setNotes((current) => {
         const next = { ...current };
         delete next[itemId];
@@ -961,6 +972,7 @@ function ReadingListPage() {
               <button className="text-button" onClick={() => setFilter('ALL')}>Show everything</button>
             </div>
           )}
+          {pagination && <PaginationControls pagination={pagination} onPageChange={setPage} />}
         </>
       ) : (
         <div className="empty-state reading-empty">

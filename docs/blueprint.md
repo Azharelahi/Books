@@ -6,6 +6,7 @@
 - **Database:** PostgreSQL accessed through Prisma ORM.
 - **Validation:** Zod schemas at HTTP boundaries.
 - **Authentication:** JWT bearer tokens signed with a required, private `JWT_SECRET` of at least 32 characters; bcrypt password hashing.
+- **Production middleware:** Helmet security headers, request metadata logging, bounded login attempts, and a database-aware health endpoint.
 - **API prefix:** `/api/v1`.
 - **Catalog model:** Books, authors, and categories form a shared catalog. Catalog reads are available to clients; catalog writes are restricted to administrators. Regular users manage only their own reading-list entries.
 - **Documentation and manual testing:** OpenAPI documentation and a Postman collection/environment.
@@ -80,7 +81,7 @@ Each feature module owns its HTTP routes, controllers, validation schemas, and b
 | Registration/login | Public | Public |
 | Admin account | Not public | `npm run db:seed` using `ADMIN_EMAIL` and `ADMIN_PASSWORD` |
 
-The user role defaults to `USER`; the admin role is granted through the idempotent Prisma seed, never through public registration input. Set `JWT_SECRET` to a unique random value of at least 32 characters in every environment. The server refuses to start if it is absent or invalid. The API and seed use a shared Prisma client; the server connects on startup and disconnects during graceful shutdown.
+The user role defaults to `USER`; the admin role is granted through the idempotent Prisma seed, never through public registration input. Set `JWT_SECRET` to a unique random value of at least 32 characters in every environment. The server refuses to start if it is absent or invalid. JWT verification accepts HS256 only and requires a subject and recognized role. The API and seed use a shared Prisma client; the server connects on startup and disconnects during graceful shutdown. Tests require a separate `.env.test` database whose database name includes `test`.
 
 ## Initial route map
 
@@ -109,6 +110,8 @@ All routes are under `/api/v1`.
 | `POST` | `/me/reading-list` | Authenticated | Add a book to the caller's list |
 | `PATCH` | `/me/reading-list/:itemId` | Authenticated | Update status/notes for own entry |
 | `DELETE` | `/me/reading-list/:itemId` | Authenticated | Remove own entry |
+
+List endpoints for books, authors, categories, and the reading list accept `page` (default `1`) and `limit` (default `20`, maximum `100`) and return a `pagination` object with the result array. The storefront uses bounded pages for these lists.
 
 Reading-list entries reference catalog books and have a unique `(userId, bookId)` pair. A user ID is taken from the verified token, not request payloads.
 
@@ -155,6 +158,7 @@ Work on one step at a time. After each step, run its listed checks and review th
 - Prisma schema validation succeeds.
 - Apply pending migrations with `npm run db:deploy` against the configured local database.
 - `npm run db:seed` provisions the configured admin account; rerunning it updates that account's password and ensures its ADMIN role.
+- Copy `.env.test.example` to `.env.test`, create the separate test database, then run `npm run db:test:setup` and `npm test`. The test runner refuses database names that do not contain `test`.
 - Run `npm run db:verify` to test Prisma connection, read/write, and constraints.
 - Unique and foreign-key constraints behave as designed.
 - The API starts only after establishing its shared database connection and disconnects Prisma on shutdown.

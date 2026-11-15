@@ -1,5 +1,6 @@
 import 'dotenv/config';
 import express from 'express';
+import helmet from 'helmet';
 import { z } from 'zod';
 import { UserRole } from './generated/prisma/enums.js';
 import authRoutes from './modules/auth/auth.routes.js';
@@ -12,13 +13,34 @@ import { authorize } from './middleware/authorize.js';
 import { errorHandler } from './middleware/error-handler.js';
 import { notFound } from './middleware/not-found.js';
 import { validate } from './middleware/validate.js';
+import { config } from './config/env.js';
+import { prisma } from './lib/prisma.js';
 
 export const app = express();
 
+app.use(helmet());
+app.use((request, response, next) => {
+  const startedAt = performance.now();
+  response.on('finish', () => {
+    console.log(JSON.stringify({
+      level: 'info',
+      method: request.method,
+      path: request.path,
+      status: response.statusCode,
+      durationMs: Math.round(performance.now() - startedAt),
+    }));
+  });
+  next();
+});
 app.use(express.json());
 
-app.get('/health', (_request, response) => {
-  response.status(200).json({ status: 'ok' });
+app.get('/health', async (_request, response) => {
+  try {
+    await prisma.$queryRaw`SELECT 1`;
+    response.status(200).json({ status: 'ok' });
+  } catch {
+    response.status(503).json({ status: 'unavailable' });
+  }
 });
 app.get('/', (_request, response) => {
   response.status(200).json({ message: 'Welcome to Bookstore API' });
@@ -30,7 +52,7 @@ app.use('/api/v1/books', booksRoutes);
 app.use('/api/v1/categories', categoriesRoutes);
 app.use('/api/v1/me/reading-list', readingListRoutes);
 
-if (process.env.NODE_ENV !== 'production') {
+if (config.NODE_ENV === 'development') {
   app.get('/_dev/protected', authenticate, (request, response) => {
     response.status(200).json({ user: request.user });
   });

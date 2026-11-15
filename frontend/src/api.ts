@@ -134,8 +134,16 @@ export async function getBook(id: string, signal?: AbortSignal): Promise<Book> {
   return result.book;
 }
 
+export async function getAuthorsPage(
+  params: { page?: number; limit?: number } = {},
+  signal?: AbortSignal,
+): Promise<{ authors: Author[]; pagination: Pagination }> {
+  const query = new URLSearchParams({ page: String(params.page ?? 1), limit: String(params.limit ?? 100) });
+  return request(`/authors?${query}`, { signal });
+}
+
 export async function getAuthors(signal?: AbortSignal): Promise<Author[]> {
-  const result = await request<{ authors: Author[] }>('/authors', { signal });
+  const result = await getAuthorsPage({}, signal);
   return result.authors;
 }
 
@@ -144,8 +152,16 @@ export async function getAuthor(id: string, signal?: AbortSignal): Promise<Autho
   return result.author;
 }
 
+export async function getCategoriesPage(
+  params: { page?: number; limit?: number } = {},
+  signal?: AbortSignal,
+): Promise<{ categories: Category[]; pagination: Pagination }> {
+  const query = new URLSearchParams({ page: String(params.page ?? 1), limit: String(params.limit ?? 100) });
+  return request(`/categories?${query}`, { signal });
+}
+
 export async function getCategories(signal?: AbortSignal): Promise<Category[]> {
-  const result = await request<{ categories: Category[] }>('/categories', { signal });
+  const result = await getCategoriesPage({}, signal);
   return result.categories;
 }
 
@@ -163,9 +179,13 @@ export async function login(email: string, password: string): Promise<{ token: s
   return request('/auth/login', { method: 'POST', body: { email, password } });
 }
 
-export async function getReadingList(token: string, signal?: AbortSignal): Promise<ReadingListEntry[]> {
-  const result = await request<{ entries: ReadingListEntry[] }>('/me/reading-list', { token, signal });
-  return result.entries;
+export async function getReadingList(
+  token: string,
+  params: { page?: number; limit?: number } = {},
+  signal?: AbortSignal,
+): Promise<{ entries: ReadingListEntry[]; pagination: Pagination }> {
+  const query = new URLSearchParams({ page: String(params.page ?? 1), limit: String(params.limit ?? 12) });
+  return request(`/me/reading-list?${query}`, { token, signal });
 }
 
 export async function addReadingListItem(token: string, bookId: string): Promise<ReadingListEntry> {

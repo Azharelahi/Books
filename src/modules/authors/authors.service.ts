@@ -1,6 +1,6 @@
-import { Prisma } from '../../generated/prisma/client.js';
 import { ApiError } from '../../lib/api-error.js';
 import { prisma } from '../../lib/prisma.js';
+import type { PaginationQuery } from '../../lib/pagination.js';
 
 export type AuthorRecord = {
   id: string;
@@ -10,101 +10,33 @@ export type AuthorRecord = {
   updatedAt: Date;
 };
 
-export async function listAuthors(): Promise<AuthorRecord[]> {
-
-
-  try {
-    return await prisma.author.findMany({
-      orderBy: { name: 'asc' },
-    });
-  } finally {
-
-  }
+export async function listAuthors(query: PaginationQuery) {
+  const skip = (query.page - 1) * query.limit;
+  const [authors, total] = await prisma.$transaction([
+    prisma.author.findMany({ orderBy: [{ name: 'asc' }, { id: 'asc' }], skip, take: query.limit }),
+    prisma.author.count(),
+  ]);
+  return { authors, pagination: { ...query, total, totalPages: Math.ceil(total / query.limit) } };
 }
 
 export async function getAuthorById(authorId: string): Promise<AuthorRecord> {
-
-
-  try {
-    const author = await prisma.author.findUnique({ where: { id: authorId } });
-    if (!author) {
-      throw new ApiError(404, 'AUTHOR_NOT_FOUND', 'Author not found');
-    }
-
-    return author;
-  } finally {
-
-  }
+  const author = await prisma.author.findUnique({ where: { id: authorId } });
+  if (!author) throw new ApiError(404, 'AUTHOR_NOT_FOUND', 'Author not found');
+  return author;
 }
 
 export async function createAuthor(input: { name: string; biography?: string | null }): Promise<AuthorRecord> {
-
-
-  try {
-    return await prisma.author.create({
-      data: {
-        name: input.name.trim(),
-        biography: input.biography?.trim() || null,
-      },
-    });
-  } catch (error) {
-    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
-      throw new ApiError(409, 'AUTHOR_ALREADY_EXISTS', 'An author with this value already exists');
-    }
-
-    throw error;
-  } finally {
-
-  }
+  return prisma.author.create({ data: { name: input.name.trim(), biography: input.biography?.trim() || null } });
 }
 
 export async function updateAuthor(authorId: string, input: { name?: string; biography?: string | null }): Promise<AuthorRecord> {
-
-
   const data: { name?: string; biography?: string | null } = {};
-  if (typeof input.name === 'string') {
-    data.name = input.name.trim();
-  }
-  if (typeof input.biography === 'string') {
-    data.biography = input.biography.trim() || null;
-  }
-  if (input.biography === null) {
-    data.biography = null;
-  }
-
-  try {
-    return await prisma.author.update({
-      where: { id: authorId },
-      data,
-    });
-  } catch (error) {
-    if (error instanceof Prisma.PrismaClientKnownRequestError) {
-      if (error.code === 'P2025') {
-        throw new ApiError(404, 'AUTHOR_NOT_FOUND', 'Author not found');
-      }
-      if (error.code === 'P2002') {
-        throw new ApiError(409, 'AUTHOR_ALREADY_EXISTS', 'An author with this value already exists');
-      }
-    }
-
-    throw error;
-  } finally {
-
-  }
+  if (typeof input.name === 'string') data.name = input.name.trim();
+  if (typeof input.biography === 'string') data.biography = input.biography.trim() || null;
+  if (input.biography === null) data.biography = null;
+  return prisma.author.update({ where: { id: authorId }, data });
 }
 
 export async function deleteAuthor(authorId: string): Promise<void> {
-
-
-  try {
-    await prisma.author.delete({ where: { id: authorId } });
-  } catch (error) {
-    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
-      throw new ApiError(404, 'AUTHOR_NOT_FOUND', 'Author not found');
-    }
-
-    throw error;
-  } finally {
-
-  }
+  await prisma.author.delete({ where: { id: authorId } });
 }

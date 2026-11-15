@@ -3,6 +3,7 @@ import { UserRole } from '../../generated/prisma/enums.js';
 import { authenticate } from '../../middleware/authenticate.js';
 import { authorize } from '../../middleware/authorize.js';
 import { validate } from '../../middleware/validate.js';
+import { paginationQuerySchema } from '../../lib/pagination.js';
 import {
   createAuthorHandler,
   deleteAuthorHandler,
@@ -14,7 +15,7 @@ import { authorIdParamSchema, createAuthorSchema, updateAuthorSchema } from './a
 
 const authorsRouter = Router();
 
-authorsRouter.get('/', listAuthorsHandler);
+authorsRouter.get('/', validate({ query: paginationQuerySchema }), listAuthorsHandler);
 authorsRouter.get('/:authorId', validate({ params: authorIdParamSchema }), getAuthorHandler);
 authorsRouter.post('/', authenticate, authorize(UserRole.ADMIN), validate({ body: createAuthorSchema }), createAuthorHandler);
 authorsRouter.patch(

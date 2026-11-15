@@ -17,7 +17,8 @@ export const registerSchema = z
 export const loginSchema = z
   .object({
     email: emailSchema,
-    password: passwordSchema,
+    // Login reports short passwords as invalid credentials instead of registration validation errors.
+    password: z.string().max(128, 'Password is too long'),
   })
   .strict();
 

@@ -118,7 +118,7 @@ function mapPrismaError(error: Prisma.PrismaClientKnownRequestError): {
       };
     default:
       return {
-        statusCode: 400,
+        statusCode: 500,
         code: 'DATABASE_ERROR',
         message: 'A database error occurred',
         details: [],
