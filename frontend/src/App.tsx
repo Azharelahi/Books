@@ -72,13 +72,18 @@ function Header() {
             </NavLink>
           ))}
         </nav>
-        <div className="header-account">
+        <div className={`header-account${user ? ' is-signed-in' : ''}`}>
           {user ? (
             <>
-              {user.role === 'ADMIN' && <Link className="account-reading-link" to="/admin/books">Manage</Link>}
-              <Link className="account-reading-link" to="/reading-list">My reading list</Link>
-              <span className="account-email">{user.email}</span>
-              <button className="sign-out-button" onClick={signOut}>Sign out</button>
+              <div className="account-identity">
+                <span className="account-avatar" aria-hidden="true">{user.email.charAt(0).toUpperCase()}</span>
+                <span className="account-email">{user.email}</span>
+              </div>
+              <div className="account-actions">
+                {user.role === 'ADMIN' && <Link className="account-reading-link" to="/admin/books">Manage</Link>}
+                <Link className="account-reading-link" to="/reading-list">My reading list</Link>
+                <button className="sign-out-button" onClick={signOut}>Sign out</button>
+              </div>
             </>
           ) : (
             <>
@@ -186,8 +191,8 @@ function BookGrid({ books }: { books: Book[] }) {
     return (
       <div className="empty-state">
         <span aria-hidden="true">⌕</span>
-        <h2>No books on this shelf yet</h2>
-        <p>Try a different search or clear a filter. An administrator can sign in to add books.</p>
+        <h2>No books on this shelf just yet</h2>
+        <p>Try another search or clear a filter. Your next read may be only one shelf away.</p>
         <div className="empty-actions">
           <Link className="button button-dark" to="/books">Browse all books</Link>
           <Link className="underlined-link" to="/login" state={{ from: { pathname: '/admin/books' } }}>Sign in as admin</Link>
@@ -219,31 +224,31 @@ function HomePage() {
     <>
       <section className="hero">
         <div className="hero-copy">
-          <span className="eyebrow"><span className="eyebrow-line" /> A bookshop for the curious</span>
-          <h1>Find a story<br />that <em>stays</em> with you.</h1>
-          <p>Good books make a little more room in the world. Find your next one in a collection made for wandering minds.</p>
+          <span className="eyebrow"><span className="eyebrow-line" /> A reading room for curious minds</span>
+          <h1>Find a story<br />worth <em>staying for.</em></h1>
+          <p>Some stories entertain. The right ones move in. Find yours among a collection made for curious minds.</p>
           <div className="hero-actions">
-            <Link to="/books" className="button button-dark">Explore the books <span aria-hidden="true">↗</span></Link>
-            <Link to="/categories" className="quiet-link">Browse by shelf <span aria-hidden="true">→</span></Link>
+            <Link to="/books" className="button button-dark">Find your next read <span aria-hidden="true">↗</span></Link>
+            <Link to="/categories" className="quiet-link">Wander the shelves <span aria-hidden="true">→</span></Link>
           </div>
-          <div className="hero-footnote"><span className="footnote-star">✳</span> Thoughtfully gathered, endlessly browsable</div>
+          <div className="hero-footnote"><span className="footnote-star">✳</span> Curated for curiosity. No rush.</div>
         </div>
         <div className="hero-art" aria-label="Decorative illustration of a stack of books">
           <div className="sun-disc" />
-          <div className="hero-quote">A small world<br />of its own.</div>
+          <div className="hero-quote">Open a book.<br />Go somewhere.</div>
           <div className="hero-stack">
             <div className="stack-book stack-book-back"><span>STAY AWHILE</span></div>
             <div className="stack-book stack-book-mid"><span>WONDER</span></div>
             <div className="stack-book stack-book-front"><span>READ ON</span></div>
           </div>
-          <span className="art-caption">A good place to begin <span>✳</span></span>
+          <span className="art-caption">A whole world between covers <span>✳</span></span>
         </div>
       </section>
 
       <section className="home-categories section-wrap">
         <div className="section-heading">
-          <div><span className="eyebrow">Follow a thread</span><h2>Find your kind of <em>curious.</em></h2></div>
-          <Link className="underlined-link" to="/categories">All shelves <span aria-hidden="true">↗</span></Link>
+          <div><span className="eyebrow">Follow your curiosity</span><h2>A shelf for every <em>mood.</em></h2></div>
+          <Link className="underlined-link" to="/categories">Browse every shelf <span aria-hidden="true">↗</span></Link>
         </div>
         {categories.error ? <ErrorState message={categories.error} retry={categories.retry} /> : null}
         {categories.loading ? <div className="category-skeleton" aria-label="Loading shelves" /> : (
@@ -252,7 +257,7 @@ function HomePage() {
               <Link className={`category-chip chip-${index % 4}`} key={category.id} to={`/categories/${category.id}`}>
                 <span>{category.name}</span><span aria-hidden="true">↗</span>
               </Link>
-            )) : !categories.error ? <p className="muted-copy">New shelves are being arranged. Check back soon.</p> : null}
+            )) : !categories.error ? <p className="muted-copy">Fresh shelves are on their way. Come back for a look soon.</p> : null}
           </div>
         )}
       </section>
@@ -260,21 +265,21 @@ function HomePage() {
       <section className="featured-section">
         <div className="section-wrap">
           <div className="section-heading">
-            <div><span className="eyebrow">A few good places to start</span><h2>Picked for your <em>next chapter.</em></h2></div>
-            <Link className="underlined-link" to="/books">The whole collection <span aria-hidden="true">↗</span></Link>
+            <div><span className="eyebrow">A few places to begin</span><h2>Your next favorite <em>could be here.</em></h2></div>
+            <Link className="underlined-link" to="/books">Browse all books <span aria-hidden="true">↗</span></Link>
           </div>
           {books.error ? <ErrorState message={books.error} retry={books.retry} /> : books.loading ? <LoadingGrid /> : <BookGrid books={featuredBooks} />}
         </div>
       </section>
       <section className="closing-note section-wrap">
         <span className="closing-star" aria-hidden="true">✳</span>
-        <p>There’s no rush. The right book has a way of finding its way to you.</p>
-        <Link className="underlined-link" to="/books">Take a look around <span aria-hidden="true">↗</span></Link>
+        <p>Somewhere between “just one more chapter” and sunrise, a favorite begins.</p>
+        <Link className="underlined-link" to="/books">Find your next read <span aria-hidden="true">↗</span></Link>
       </section>
       <section className="home-route-actions section-wrap" aria-label="More things to do">
         <div>
-          <span className="eyebrow">Keep exploring</span>
-          <h2>Your next step, <em>your way.</em></h2>
+          <span className="eyebrow">The story keeps going</span>
+          <h2>Where curiosity takes you <em>next.</em></h2>
         </div>
         <div className="route-action-links">
           <Link className="button button-dark" to="/authors">Meet the authors</Link>
@@ -341,9 +346,9 @@ function CatalogPage() {
   return (
     <div className="page-wrap">
       <div className="page-intro">
-        <span className="eyebrow">The collection</span>
-        <h1>Books for every<br /><em>kind of wondering.</em></h1>
-        <p>Take the scenic route. Search a title, follow an author, or see where a shelf leads.</p>
+        <span className="eyebrow">The whole collection, at your fingertips</span>
+        <h1>Find your next<br /><em>favorite read.</em></h1>
+        <p>Search for a title, follow an author, or let a shelf lead you somewhere unexpected.</p>
       </div>
       {authors.error && <ErrorState message={`Author filters are unavailable. ${authors.error}`} retry={authors.retry} />}
       {categories.error && <ErrorState message={`Shelf filters are unavailable. ${categories.error}`} retry={categories.retry} />}
@@ -354,7 +359,7 @@ function CatalogPage() {
         }}>
           <label className="sr-only" htmlFor="book-search">Search books by title</label>
           <span className="search-icon" aria-hidden="true">⌕</span>
-          <input id="book-search" type="search" value={searchValue} onChange={(event) => setSearchValue(event.target.value)} placeholder="Search book titles…" />
+          <input id="book-search" type="search" value={searchValue} onChange={(event) => setSearchValue(event.target.value)} placeholder="A title you can’t quite remember…" />
           <button type="submit" className="search-submit">Search</button>
         </form>
         <div className="filter-row">
@@ -580,7 +585,7 @@ function AddToReadingList({ bookId }: { bookId: string }) {
   return (
     <div className="save-book-prompt">
       {added ? (
-        <Link className="button button-dark" to="/reading-list">Added to your reading list <span aria-hidden="true">↗</span></Link>
+        <Link className="button button-dark" to="/reading-list">Saved to your reading list <span aria-hidden="true">↗</span></Link>
       ) : (
         <button className="button button-dark" onClick={addBook} disabled={pending}>
           {pending ? 'Adding…' : 'Add to my reading list'} {!pending && <span aria-hidden="true">↗</span>}
@@ -614,14 +619,14 @@ function BookDetailPage() {
               <span key={author.id}>{index > 0 && ' · '}<Link to={`/authors/${author.id}`}>{author.name}</Link></span>
             )) : 'An undiscovered voice'}
           </p>
-          {book.description ? <p className="detail-description">{book.description}</p> : <p className="detail-description muted-copy">Every book begins with a little mystery. More about this one may be added soon.</p>}
+          {book.description ? <p className="detail-description">{book.description}</p> : <p className="detail-description muted-copy">Every book holds a little mystery. More about this one is on its way.</p>}
           <dl className="book-facts">
             {book.publishedAt && <div><dt>Published</dt><dd>{new Date(book.publishedAt).getUTCFullYear()}</dd></div>}
             {book.isbn && <div><dt>ISBN</dt><dd>{book.isbn}</dd></div>}
             {!!book.categories.length && <div><dt>On the shelf</dt><dd>{book.categories.map((category) => <Link key={category.id} to={`/categories/${category.id}`}>{category.name}</Link>)}</dd></div>}
           </dl>
           <AddToReadingList bookId={book.id} />
-          <div className="detail-aside"><span aria-hidden="true">✳</span> No hurry. Take your time finding the right story.</div>
+          <div className="detail-aside"><span aria-hidden="true">✳</span> No hurry. The right story is worth taking your time for.</div>
         </div>
       </article>
     </div>
@@ -634,9 +639,9 @@ function AuthorsPage() {
   return (
     <div className="page-wrap">
       <div className="page-intro">
-        <span className="eyebrow">The voices behind the pages</span>
-        <h1>Meet the <em>storytellers.</em></h1>
-        <p>Every book opens a conversation. Start with the people who put words to paper.</p>
+        <span className="eyebrow">The minds behind the stories</span>
+        <h1>Meet your next favorite <em>voices.</em></h1>
+        <p>Behind every book is a voice worth meeting. Find the people who make stories stay with us.</p>
       </div>
       {result.error ? <ErrorState message={result.error} retry={result.retry} /> : result.loading ? <div className="people-skeleton" /> : result.data?.authors.length ? (
         <div className="author-grid">
@@ -649,7 +654,7 @@ function AuthorsPage() {
             </Link>
           ))}
         </div>
-      ) : <div className="empty-state"><span aria-hidden="true">✳</span><h2>New voices, coming soon</h2><p>We’re still building this shelf. An administrator can add authors to the catalog.</p><Link className="button button-dark" to="/login" state={{ from: { pathname: "/admin/authors/new" } }}>Sign in as admin</Link></div>}
+      ) : <div className="empty-state"><span aria-hidden="true">✳</span><h2>New voices are on their way</h2><p>This shelf is still taking shape. An administrator can add the first author.</p><Link className="button button-dark" to="/login" state={{ from: { pathname: "/admin/authors/new" } }}>Sign in as admin</Link></div>}
       {result.data && <PaginationControls pagination={result.data.pagination} onPageChange={setPage} />}
     </div>
   );
@@ -714,8 +719,8 @@ function CategoriesPage() {
     <div className="page-wrap">
       <div className="page-intro">
         <span className="eyebrow">A place for every kind of story</span>
-        <h1>Browse by <em>feeling.</em></h1>
-        <p>Follow your curiosity. You never know what might be waiting on the next shelf.</p>
+        <h1>Find a shelf for your <em>next wonder.</em></h1>
+        <p>Follow a feeling and see where a story takes you. Your next favorite might be one shelf away.</p>
       </div>
       {result.error ? <ErrorState message={result.error} retry={result.retry} /> : result.loading ? <div className="category-skeleton" /> : result.data?.categories.length ? (
         <div className="shelf-grid">
@@ -728,7 +733,7 @@ function CategoriesPage() {
             </Link>
           ))}
         </div>
-      ) : <div className="empty-state"><span aria-hidden="true">◈</span><h2>The shelves are being arranged</h2><p>An administrator can add categories to start arranging the shelves.</p><Link className="button button-dark" to="/login" state={{ from: { pathname: "/admin/categories/new" } }}>Sign in as admin</Link></div>}
+      ) : <div className="empty-state"><span aria-hidden="true">◈</span><h2>These shelves are waiting for stories</h2><p>An administrator can add the first category and bring this corner of the collection to life.</p><Link className="button button-dark" to="/login" state={{ from: { pathname: "/admin/categories/new" } }}>Sign in as admin</Link></div>}
       {result.data && <PaginationControls pagination={result.data.pagination} onPageChange={setPage} />}
     </div>
   );
@@ -774,8 +779,8 @@ function CategoryDetailPage() {
   return (
     <div className="page-wrap">
       <Link className="back-link underlined-link" to="/categories">← All shelves</Link>
-      <div className="category-detail-intro"><span className="eyebrow">A shelf of its own · {shelf.slug}</span><h1>{shelf.name}<em>.</em></h1><p>A small corner of the collection, gathered around a shared thread.</p></div>
-      <div className="section-heading"><div><span className="eyebrow">Take a closer look</span><h2>Stories on this shelf.</h2></div></div>
+      <div className="category-detail-intro"><span className="eyebrow">A shelf of its own · {shelf.slug}</span><h1>{shelf.name}<em>.</em></h1><p>A little corner of the collection for stories that share a thread.</p></div>
+      <div className="section-heading"><div><span className="eyebrow">Pull up a chair</span><h2>Stories on this shelf.</h2></div></div>
       {books.error ? <ErrorState message={books.error} retry={books.retry} /> : books.loading ? <LoadingGrid /> : <BookGrid books={books.data?.books ?? []} />}
       {books.data && <PaginationControls pagination={books.data.pagination} onPageChange={changePage} />}
     </div>
@@ -895,8 +900,8 @@ function ReadingListPage() {
       <div className="reading-list-heading">
         <div>
           <span className="eyebrow">Your own little corner</span>
-          <h1>Your reading<br /><em>life, lately.</em></h1>
-          <p>A place to keep the books you mean to read, the ones you’re in, and the ones you’ll remember.</p>
+          <h1>Your next chapter,<br />all <em>in one place.</em></h1>
+          <p>The books you’re eyeing, the ones you’re in, and the stories already leaving their mark.</p>
         </div>
         <span className="reading-list-mark" aria-hidden="true">✳</span>
       </div>
@@ -978,8 +983,8 @@ function ReadingListPage() {
         <div className="empty-state reading-empty">
           <span aria-hidden="true">✳</span>
           <h2>A fresh page</h2>
-          <p>Your reading list is empty for now. Find a book that feels like the beginning of something.</p>
-          <Link className="button button-dark" to="/books">Explore the collection <span aria-hidden="true">↗</span></Link>
+          <p>Every good reading list starts with one book. Find a story that makes you curious.</p>
+          <Link className="button button-dark" to="/books">Find your first read <span aria-hidden="true">↗</span></Link>
         </div>
       )}
     </div>
@@ -1111,7 +1116,7 @@ function AdminPage({ kind }: { kind: AdminKind }) {
     ) : loading ? <p role="status">Loading {kind}…</p> : loadError ? <ErrorState message={loadError} retry={() => { books.retry(); authors.retry(); categories.retry(); }} /> : records.length ? (
       <div className="admin-records">{records.map((item) => <article className="admin-record" key={item.id}>
         <div><h2>{'title' in item ? item.title : item.name}</h2><p>{'title' in item ? item.authors.map((a) => a.name).join(', ') || 'No authors linked' : 'slug' in item ? item.slug : item.biography || 'No biography'}</p></div>
-        <div className="admin-actions"><Link className="text-button" to={`/admin/${kind}/${item.id}/edit`}>Edit</Link>{confirmId === item.id ? <><span>Delete this record?</span><button className="remove-button" disabled={busy} onClick={() => void remove(item.id)}>Confirm</button><button className="text-button" onClick={() => setConfirmId('')}>Cancel</button></> : <button className="remove-button" onClick={() => setConfirmId(item.id)}>Delete</button>}</div>
+        <div className="admin-actions"><Link className="admin-edit-button" to={`/admin/${kind}/${item.id}/edit`}>Edit</Link>{confirmId === item.id ? <><span>Delete this record?</span><button className="admin-delete-button is-confirm" disabled={busy} onClick={() => void remove(item.id)}>Confirm delete</button><button className="admin-cancel-button" onClick={() => setConfirmId('')}>Cancel</button></> : <button className="admin-delete-button" onClick={() => setConfirmId(item.id)}>Delete</button>}</div>
       </article>)}</div>
     ) : <div className="empty-state"><h2>No {kind} yet</h2><p>Add the first record to the catalog.</p><Link className="button button-dark" to={`/admin/${kind}/new`}>Add {kind.slice(0, -1)}</Link></div>}
   </div>;
