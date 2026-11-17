@@ -453,8 +453,15 @@ function AuthPage({ mode }: { mode: 'login' | 'register' }) {
         navigate(destination.path, { replace: true, state: destination.state });
       } else {
         await register(email.trim(), password);
-        setPassword('');
-        setSuccess('Your account is ready. Sign in to start your reading list.');
+        try {
+          const session = await login(email.trim(), password);
+          signIn(session.token);
+          const destination = getReturnLocation(location.state);
+          navigate(destination.path, { replace: true, state: destination.state });
+        } catch {
+          setPassword('');
+          setSuccess('Your account was created, but automatic sign-in did not work. Please sign in to continue.');
+        }
       }
     } catch (cause) {
       if (cause instanceof ApiError && cause.details.length) {
