@@ -17,7 +17,7 @@ import { config } from './config/env.js';
 import { prisma } from './lib/prisma.js';
 
 export const app = express();
-
+app.set('trust proxy', 'loopback');
 app.use(helmet());
 app.use((request, response, next) => {
   const startedAt = performance.now();
