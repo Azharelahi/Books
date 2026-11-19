@@ -12,7 +12,7 @@ async function startServer(): Promise<void> {
     return;
   }
 
-  const server = app.listen(config.PORT, () => {
+ const server = app.listen(config.PORT, '127.0.0.1', () => {
     console.log(`Bookstore API listening on port ${config.PORT}`);
   });
 
